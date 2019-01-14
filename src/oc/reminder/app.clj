@@ -32,10 +32,6 @@
                                  (assoc-in [:extra :exception-data] (ex-data ex))
                                  (sentry-interfaces/stacktrace ex)))))))
 
-;; ----- Test Reminder Sending -----
-
-(defonce cookie-name (str c/cookie-prefix "jwt"))
-
 ;; ----- Request Routing -----
 
 (defn routes [sys]
