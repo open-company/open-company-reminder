@@ -7,8 +7,7 @@
   - Tick lib is used for scheduling.
   - Tick deprecated the its schedule/timeline API but has not replaced it yet w/ a new design (Jan 3, 2019)
   "
-  (:require [defun.core :refer (defun)]
-            [taoensso.timbre :as timbre]
+  (:require [taoensso.timbre :as timbre]
             [java-time :as jt]
             [tick.core :as tick]
             [tick.timeline :as timeline]

@@ -1,5 +1,5 @@
-; (ns oc.reminder.async.reminder-request
-;   "Publish email/bot digest request to AWS SQS."
+ (ns oc.reminder.async.reminder-request
+   "Publish email/bot digest request to AWS SQS.")
 ;   (:require [clojure.string :as s]
 ;             [defun.core :refer (defun-)]
 ;             [amazonica.aws.sqs :as sqs]

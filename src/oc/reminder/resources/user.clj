@@ -1,6 +1,5 @@
 (ns oc.reminder.resources.user
-  (:require [clojure.walk :refer (keywordize-keys)]
-            [oc.lib.db.common :as db-common]))
+  (:require [oc.lib.db.common :as db-common]))
 
 ;; ----- RethinkDB metadata -----
 

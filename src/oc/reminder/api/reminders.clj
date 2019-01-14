@@ -1,12 +1,8 @@
 (ns oc.reminder.api.reminders
   "Liberator API for reminder resources."
-  (:require [taoensso.timbre :as timbre]
-            [compojure.core :as compojure :refer (ANY)]
+  (:require [compojure.core :as compojure :refer (ANY)]
             [liberator.core :refer (defresource by-method)]
-            [schema.core :as schema]
-            [oc.lib.schema :as lib-schema]
             [oc.lib.db.pool :as pool]
-            [oc.lib.db.common :as db-common]
             [oc.lib.api.common :as api-common]
             [oc.reminder.config :as config]
             [oc.reminder.resources.reminder :as reminder-res]

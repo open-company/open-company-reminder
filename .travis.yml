@@ -13,9 +13,8 @@ before_script:
   - "echo $JAVA_OPTS"
   - lein clean
 script:
-- lein test!
-- lein eastwood
-- lein kibit
+  - lein eastwood
+  - lein kibit
 branches:
   only:
   - master

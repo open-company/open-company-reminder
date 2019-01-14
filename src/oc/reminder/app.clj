@@ -2,8 +2,6 @@
   "Namespace for the web application which serves the REST API and starts up the scheduler."
   (:gen-class)
   (:require
-    [defun.core :refer (defun-)]
-    [if-let.core :refer (if-let*)]
     [raven-clj.core :as sentry]
     [raven-clj.interfaces :as sentry-interfaces]
     [raven-clj.ring :as sentry-mw]
@@ -16,7 +14,6 @@
     [compojure.core :as compojure :refer (GET)]
     [com.stuartsierra.component :as component]
     [oc.lib.sentry-appender :as sa]
-    [oc.lib.jwt :as jwt]
     [oc.lib.api.common :as api-common]
     [oc.reminder.components :as components]
     [oc.reminder.config :as c]
@@ -86,16 +83,16 @@
     (timbre/merge-config! {:level (keyword c/log-level)}))
 
   ;; Start the system
-  (let [sys (-> {:handler-fn app :port port}
-              components/reminder-system
-              component/start)]
+  (-> {:handler-fn app :port port}
+    components/reminder-system
+    component/start)
 
-    ;; Echo config information
-    (println (str "\n"
-      (when (and c/intro? (pos? port))
-        (str (slurp (clojure.java.io/resource "ascii_art.txt")) "\n"))
-      "OpenCompany Reminder Service\n"))
-    (echo-config port)))
+  ;; Echo config information
+  (println (str "\n"
+    (when (and c/intro? (pos? port))
+      (str (slurp (clojure.java.io/resource "ascii_art.txt")) "\n"))
+    "OpenCompany Reminder Service\n"))
+  (echo-config port))
 
 (defn -main []
   (start c/reminder-server-port))
