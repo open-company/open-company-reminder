@@ -1,0 +1,8 @@
+(ns oc.reminder.db.migrations.MIGRATION-NAME
+  (:require [rethinkdb.query :as r]
+            [oc.lib.db.migrations :as m]
+            [oc.reminder.config :as c]))
+
+(defn up [conn]
+  ;; Do great things
+  true) ; return true on success
