@@ -67,5 +67,4 @@
 
 ;; ----- JWT -----
 
-(defonce cookie-prefix (or (env :cookie-prefix) "localhost-"))
 (defonce passphrase (env :open-company-auth-passphrase))
