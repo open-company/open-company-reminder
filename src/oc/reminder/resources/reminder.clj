@@ -10,7 +10,7 @@
 
 (def reminder-props [:uuid :org-uuid 
                      :headline :author :assignee :assignee-timezone
-                     :frequency :week-occurence :period-occurence
+                     :frequency :week-occurrence :period-occurrence
                      :last-sent :next-send
                      :created-at :updated-at])
 
@@ -41,8 +41,8 @@
 
 (def Frequency (schema/pred #(#{:quarterly :monthly :biweekly :weekly} (keyword %))))
 
-(def WeekOccurence (schema/pred #(#{:monday :tuesday :wednesday :thursday :friday :saturday :sunday} (keyword %))))
-(def PeriodOccurence (schema/pred #(#{:first :first-monday :last-friday :last} (keyword %))))
+(def WeekOccurrence (schema/pred #(#{:monday :tuesday :wednesday :thursday :friday :saturday :sunday} (keyword %))))
+(def PeriodOccurrence (schema/pred #(#{:first :first-monday :last-friday :last} (keyword %))))
 
 (def Reminder {
   :uuid lib-schema/UniqueID
@@ -51,8 +51,8 @@
   :author lib-schema/Author
   :assignee lib-schema/Author
   :frequency Frequency
-  :week-occurence WeekOccurence
-  :period-occurence PeriodOccurence
+  :week-occurrence WeekOccurrence
+  :period-occurrence PeriodOccurrence
   :assignee-timezone lib-schema/NonBlankStr
   :last-sent (schema/maybe lib-schema/ISO8601)
   :next-send lib-schema/ISO8601
@@ -83,8 +83,8 @@
         (assoc :author author)
         (assoc :assignee assignee)
         (assoc :assignee-timezone assignee-tz)
-        (update :week-occurence #(or % :monday))
-        (update :period-occurence #(or % :first))
+        (update :week-occurrence #(or % :monday))
+        (update :period-occurrence #(or % :first))
         (assoc :last-sent nil)
         (assoc :next-send ts) ; TODO
         (assoc :created-at ts)
@@ -144,7 +144,7 @@
     :headline "Don't forget to feed the ferrets"
     :assignee {:user-id user-id}
     :frequency :weekly
-    :week-occurence :tuesday})
+    :week-occurrence :tuesday})
 
   (reminder-res/->reminder auth-conn "1234-1234-1234" reminder1 author)
 

@@ -32,14 +32,14 @@
 (defn- delete-link [reminder]
   (hateoas/delete-link (url reminder)))
 
-(defn- select-occurence [reminder-props reminder]
-  (let [prop-name (if (#{:weekly :biweekly} (keyword (:frequency reminder))) :week-occurence :period-occurence)]
+(defn- select-occurrence [reminder-props reminder]
+  (let [prop-name (if (#{:weekly :biweekly} (keyword (:frequency reminder))) :week-occurrence :period-occurrence)]
     (assoc reminder-props prop-name (prop-name reminder))))
 
 (defn- render-reminder-for-collection [reminder]
   (-> reminder
     (select-keys representation-props)
-    (select-occurence reminder)))
+    (select-occurrence reminder)))
 
 (defn- reminder-collection-links [reminder]
   (assoc (render-reminder-for-collection reminder) :links [(item-link reminder)]))
