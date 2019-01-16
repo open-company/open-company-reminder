@@ -16,11 +16,11 @@
 ;; ----- Validations -----
 
 (defn- allow-user [conn org-uuid user]
-  ;; TODO user of this org
-  {:access-level :viewer})
+  ;; TODO verify user of this org, false if not
+  {:access-level :author})
 
 (defn- allow-author [conn org-uuid user]
-  ;; TODO author/admin of this org
+  ;; TODO verigy author/admin of this org, false if not
   {:access-level :author})
 
 (defn- valid-new-reminder? [auth-conn org-uuid ctx]
@@ -131,7 +131,7 @@
   ;; Authorization
   :allowed? (by-method {
     :options true
-    :get (fn [ctx] (allow-author conn org-uuid (:user ctx)))
+    :get (fn [ctx] (allow-user conn org-uuid (:user ctx)))
     :post (fn [ctx] (allow-author conn org-uuid (:user ctx)))})
 
   ;; Existentialism
