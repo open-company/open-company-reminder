@@ -107,9 +107,7 @@
 
   ([conn org-uuid :- lib-schema/UniqueID uuid :- lib-schema/UniqueID]
   (when-let [reminder (get-reminder conn uuid)]
-    (if (= org-uuid (:org-uuid reminder)) ; ensure reminder is for the specified org
-      reminder
-      nil))))
+    (when (= org-uuid (:org-uuid reminder)) reminder)))) ; ensure reminder is for the specified org
 
 (schema/defn ^:always-validate delete-reminder!
   "Given the UUID of the reminedr, delete the reminder. Return `true` on success."
