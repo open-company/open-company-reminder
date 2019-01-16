@@ -14,7 +14,7 @@
   (str "/orgs/" org-uuid "/"))
 
 (defn url [reminder]
-  (str (org-url (:org-uuid reminder)) (:uuid reminder)))
+  (str (org-url (:org-uuid reminder)) "reminders/" (:uuid reminder)))
 
 (defn- create-link [org-uuid]
   (hateoas/create-link (org-url org-uuid) {:content-type media-type

@@ -28,9 +28,9 @@
 ;; ----- Utility functions -----
 
 (defn clean
-  "Remove any reserved properties from the entry."
-  [entry]
-  (apply dissoc entry reserved-properties))
+  "Remove any reserved properties from the reminder."
+  [reminder]
+  (apply dissoc reminder reserved-properties))
 
 (defn- author-for [user]
   (-> user
@@ -95,6 +95,27 @@
   [conn reminder :- Reminder]
   {:pre [(db-common/conn? conn)]}
   (db-common/create-resource conn table-name reminder (db-common/current-timestamp)))
+
+(schema/defn ^:always-validate get-reminder  :- (schema/maybe Reminder)
+  "
+  Given the UUID of the reminder, and optionally, the UUID of the org, retrieve the reminder,
+  or return nil if it doesn't exist or the reminder is not for the specified org.
+  "
+  ([conn uuid :- lib-schema/UniqueID]
+  {:pre [(db-common/conn? conn)]}
+  (db-common/read-resource conn table-name uuid))
+
+  ([conn org-uuid :- lib-schema/UniqueID uuid :- lib-schema/UniqueID]
+  (when-let [reminder (get-reminder conn uuid)]
+    (if (= org-uuid (:org-uuid reminder)) ; ensure reminder is for the specified org
+      reminder
+      nil))))
+
+(schema/defn ^:always-validate delete-reminder!
+  "Given the UUID of the reminedr, delete the reminder. Return `true` on success."
+  [conn uuid :- lib-schema/UniqueID]
+  {:pre [(db-common/conn? conn)]}
+  (db-common/delete-resource conn table-name uuid))
 
 ;; ----- Collection of reminders -----
 

@@ -4,6 +4,7 @@
             [compojure.core :as compojure :refer (ANY)]
             [liberator.core :refer (defresource by-method)]
             [taoensso.timbre :as timbre]
+            [schema.core :as schema]
             [oc.lib.db.pool :as pool]
             [oc.lib.api.common :as api-common]
             [oc.lib.db.common :as db-common]
@@ -47,6 +48,14 @@
       
     (do (timbre/error "Failed creating reminder for org:" org-uuid) false)))
 
+(defn- delete-reminder [conn org-uuid reminder-uuid ctx]
+  (timbre/info "Deleting reminder:" reminder-uuid "for org:" org-uuid)
+  (if-let* [org (:existing-org ctx)
+            reminder (:existing-reminder ctx)
+            _delete-result (reminder-res/delete-reminder! conn reminder-uuid)]
+    (timbre/info "Deleted reminder:" reminder-uuid "for org:" org-uuid)
+    (do (timbre/error "Deleted reminder:" reminder-uuid "for org:" org-uuid) false)))
+
 ;; ----- Resources - see: http://clojure-liberator.github.io/liberator/assets/img/decision-graph.svg
 
 ;; A resource for operations on a particular reminder
@@ -56,75 +65,48 @@
   :allowed-methods [:options :get :delete]
 
   ;; Media type client accepts
-  ; :available-media-types [mt/entry-media-type]
-  ; :handle-not-acceptable (api-common/only-accept 406 mt/entry-media-type)
+  :available-media-types [reminder-rep/media-type]
+  :handle-not-acceptable (api-common/only-accept 406 reminder-rep/media-type)
   
   ;; Media type client sends
-  ; :known-content-type? (by-method {
-  ;   :options true
-  ;   :get true
-  ;   :patch (fn [ctx] (api-common/known-content-type? ctx mt/entry-media-type))
-  ;   :delete true})
+  :known-content-type? (by-method {
+    :options true
+    :get true
+    :patch (fn [ctx] (api-common/known-content-type? ctx reminder-rep/media-type))
+    :delete true})
 
   ;; Authorization
-  ; :allowed? (by-method {
-  ;   :options true
-  ;   :get (fn [ctx] (access/access-level-for conn org-slug board-slug-or-uuid (:user ctx)))
-  ;   :patch (fn [ctx] (access/allow-authors conn org-slug board-slug-or-uuid (:user ctx)))
-  ;   :delete (fn [ctx] (access/allow-authors conn org-slug board-slug-or-uuid (:user ctx)))})
+  :allowed? (by-method {
+    :options true
+    :get (fn [ctx] (allow-user conn org-uuid (:user ctx)))
+    :patch (fn [ctx] (allow-author conn org-uuid (:user ctx)))
+    :delete (fn [ctx] (allow-author conn org-uuid (:user ctx)))})
 
   ;; Validations
-  ; :processable? (by-method {
-  ;   :options true
-  ;   :get true
-  ;   :patch (fn [ctx] (and (slugify/valid-slug? org-slug)
-  ;                         (slugify/valid-slug? board-slug-or-uuid)
-  ;                         (valid-entry-update? conn entry-uuid (:data ctx))))
-  ;   :delete true})
+  :processable? (by-method {
+    :options true
+    :get true
+    :patch false ; TODO (fn [ctx] (valid-reminder-update? conn org-uuid reminder-uuid (:data ctx))))
+    :delete true})
 
   ;; Existentialism
-  ; :exists? (fn [ctx] (if-let* [org (or (:existing-org ctx)
-  ;                                      (org-res/get-org conn org-slug))
-  ;                              org-uuid (:uuid org)
-  ;                              board (or (:existing-board ctx)
-  ;                                        (board-res/get-board conn org-uuid board-slug-or-uuid))
-  ;                              entry (or (:existing-entry ctx)
-  ;                                        (entry-res/get-entry conn org-uuid (:uuid board) entry-uuid))
-  ;                              comments (or (:existing-comments ctx)
-  ;                                           (entry-res/list-comments-for-entry conn (:uuid entry)))
-  ;                              reactions (or (:existing-reactions ctx)
-  ;                                           (entry-res/list-reactions-for-entry conn (:uuid entry)))]
-  ;                       {:existing-org (api-common/rep org) :existing-board (api-common/rep board)
-  ;                        :existing-entry (api-common/rep entry) :existing-comments (api-common/rep comments)
-  ;                        :existing-reactions (api-common/rep reactions)}
-  ;                       false))
+  :exists? (fn [ctx] (if-let* [org (or (:existing-org ctx)
+                                       (first (db-common/read-resources conn "orgs" "uuid" org-uuid)))
+                               reminder (or (:existing-reminder ctx)
+                                            (reminder-res/get-reminder conn org-uuid reminder-uuid))]
+                        {:existing-org (api-common/rep org) :existing-reminder (api-common/rep reminder)}
+                        false))
 
   ;; Actions
-  ; :patch! (fn [ctx] (update-entry conn ctx (s/join " " [org-slug board-slug-or-uuid entry-uuid])))
-  ; :delete! (fn [ctx] (delete-entry conn ctx (s/join " " [org-slug board-slug-or-uuid entry-uuid])))
+  ; :patch! (fn [ctx] (update-reminder conn org-uuid reminder-uuid ctx)
+  :delete! (fn [ctx] (delete-reminder conn org-uuid reminder-uuid ctx))
 
   ;; Responses
-  ; :handle-ok (by-method {
-  ;   :get (fn [ctx] (entry-rep/render-entry 
-  ;                     (:existing-org ctx)
-  ;                     (:existing-board ctx)
-  ;                     (:existing-entry ctx)
-  ;                     (:existing-comments ctx)
-  ;                     (reaction-res/aggregate-reactions (:existing-reactions ctx))
-  ;                     (:access-level ctx)
-  ;                     (-> ctx :user :user-id)))
-  ;   :patch (fn [ctx] (entry-rep/render-entry
-  ;                       (:existing-org ctx)
-  ;                       (:existing-board ctx)
-  ;                       (:updated-entry ctx)
-  ;                       (:existing-comments ctx)
-  ;                       (reaction-res/aggregate-reactions (:existing-reactions ctx))
-  ;                       (:access-level ctx)
-  ;                       (-> ctx :user :user-id)))})
-  ; :handle-unprocessable-entity (fn [ctx]
-  ;   (api-common/unprocessable-entity-response (schema/check common-res/Entry (:updated-entry ctx))))
-
-  )
+  :handle-ok (by-method {
+    :get (fn [ctx] (reminder-rep/render-reminder (:existing-reminder ctx)))
+    :patch (fn [ctx] (reminder-rep/render-reminder (:updated-reminder ctx)))})
+  :handle-unprocessable-entity (fn [ctx]
+    (api-common/unprocessable-entity-response (schema/check reminder-res/Reminder (:updated-reminder ctx)))))
 
 ;; A resource for operations on all reminders of a particular org
 (defresource reminder-list [conn auth-conn org-uuid]
