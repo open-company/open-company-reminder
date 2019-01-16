@@ -144,8 +144,8 @@
                  '[oc.lib.db.common :as db-common]
                  '[oc.lib.schema :as lib-schema]
                  '[oc.lib.jwt :as jwt]
-                 '[oc.reminder.resources.reminder :as reminder-res]
-                 '[oc.reminder.resources.user :as user-res]
+                 '[oc.reminder.resources.reminder :as reminder]
+                 '[oc.reminder.resources.user :as u]
                  '[oc.reminder.representations.reminder :as reminder-rep])
       ]
     }]

@@ -1,11 +1,15 @@
 (ns oc.reminder.api.reminders
   "Liberator API for reminder resources."
-  (:require [compojure.core :as compojure :refer (ANY)]
+  (:require [if-let.core :refer (if-let*)]
+            [compojure.core :as compojure :refer (ANY)]
             [liberator.core :refer (defresource by-method)]
+            [taoensso.timbre :as timbre]
             [oc.lib.db.pool :as pool]
             [oc.lib.api.common :as api-common]
+            [oc.lib.db.common :as db-common]
             [oc.reminder.config :as config]
             [oc.reminder.resources.reminder :as reminder-res]
+            [oc.reminder.resources.user :as user-res]
             [oc.reminder.representations.reminder :as reminder-rep]))
 
 ;; ----- Validations -----
@@ -23,10 +27,25 @@
     ;; Create the new reminder from the data provided
     (let [reminder-map (:data ctx)
           author (:user ctx)]
-      {:new-reminder (api-common/rep (reminder-res/->reminder auth-conn org-uuid reminder-map author))})
+      ;; TODO validate the assignee is an author/admin
+      (if-let [assignee (user-res/get-user auth-conn (-> reminder-map :assignee :user-id))] ; the assignee exists?
+        {:new-reminder (api-common/rep (reminder-res/->reminder auth-conn org-uuid reminder-map author))}
+        [false, {:reason "Assignee is not a valid user."}]))
 
     (catch clojure.lang.ExceptionInfo e
       [false, {:reason (.getMessage e)}]))) ; Not a valid new reminder
+
+;; ----- Actions -----
+
+(defn create-reminder [conn org-uuid ctx]
+  (timbre/info "Creating reminder in org:" org-uuid)
+  (if-let* [new-reminder (:new-reminder ctx)
+            reminder-result (reminder-res/create-reminder! conn new-reminder)] ; Add the reminder
+    (do
+      (timbre/info "Created reminder:" (:uuid reminder-result) "in org:" org-uuid)
+      {:created-reminder (api-common/rep reminder-result)})
+      
+    (do (timbre/error "Failed creating reminder for org:" org-uuid) false)))
 
 ;; ----- Resources - see: http://clojure-liberator.github.io/liberator/assets/img/decision-graph.svg
 
@@ -133,6 +152,11 @@
     :get (fn [ctx] (allow-user conn org-uuid (:user ctx)))
     :post (fn [ctx] (allow-author conn org-uuid (:user ctx)))})
 
+  ;; Existentialism
+  :exists? (fn [ctx] (if-let [org (first (db-common/read-resources conn "orgs" "uuid" org-uuid))]
+                        {:existing-org (api-common/rep org)}
+                        false))
+
   ;; Validations
   :processable? (by-method {
     :options true
@@ -140,23 +164,19 @@
     :post (fn [ctx] (valid-new-reminder? auth-conn org-uuid ctx))})
 
   ;; Actions
-  ; :post! (fn [ctx] (create-entry conn ctx (s/join " " [org-slug (:slug (:existing-board ctx))])))
+  :post! (fn [ctx] (create-reminder conn org-uuid ctx))
 
   ;; Responses
   :handle-ok (fn [ctx] (reminder-rep/render-reminder-list org-uuid
                                                           (reminder-res/list-reminders conn org-uuid)
                                                           (:access-level ctx)))
-  ; :handle-created (fn [ctx] (let [new-entry (:created-entry ctx)
-  ;                                 existing-board (:existing-board ctx)]
-  ;                             (api-common/location-response
-  ;                               (entry-rep/url org-slug (:slug existing-board) (:uuid new-entry))
-  ;                               (entry-rep/render-entry (:existing-org ctx) (:existing-board ctx) new-entry [] []
-  ;                                 :author (-> ctx :user :user-id))
-  ;                               mt/entry-media-type)))
-  ; :handle-unprocessable-entity (fn [ctx]
-  ;   (api-common/unprocessable-entity-response (:reason ctx)))
-
-  )
+  :handle-created (fn [ctx] (let [new-reminder (:created-reminder ctx)]
+                              (api-common/location-response
+                                (reminder-rep/url new-reminder)
+                                (reminder-rep/render-reminder new-reminder)
+                                reminder-rep/media-type)))
+  :handle-unprocessable-entity (fn [ctx]
+    (api-common/unprocessable-entity-response (:reason ctx))))
 
 ;; ----- Routes -----
 

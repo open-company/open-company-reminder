@@ -70,12 +70,8 @@
   {:pre [(db-common/conn? auth-conn)
          (map? reminder-props)]}
   (when-let* [ts (db-common/current-timestamp)
-              author-user (user-res/get-user auth-conn (:user-id user))
-              author (author-for author-user)
-              assignee-user-id (-> reminder-props :assignee :user-id)
-              assignee-user (if (= (:user-id author) assignee-user-id)
-                            author-user ; self-assigned reminder
-                            (user-res/get-user auth-conn assignee-user-id))
+              author (author-for user)
+              assignee-user (user-res/get-user auth-conn (-> reminder-props :assignee :user-id))
               assignee (author-for assignee-user)
               assignee-tz (:timezone assignee-user)]
     (-> reminder-props
