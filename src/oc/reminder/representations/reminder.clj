@@ -11,7 +11,7 @@
 (def representation-props [:uuid :headline :author :assignee :frequency :next-send :created-at :updated-at])
 
 (defn- org-url [org-uuid]
-  (str "/orgs/" org-uuid "/"))
+  (str "/orgs/" org-uuid "/reminders"))
 
 (defn url [reminder]
   (str (org-url (:org-uuid reminder)) "reminders/" (:uuid reminder)))
