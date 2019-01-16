@@ -84,7 +84,7 @@
     ;; Dev environment and dependencies
     :dev [:qa {
       :env ^:replace {
-        :db-name "open_company_reminder_dev"
+        :db-name "open_company_storage_dev"
         :auth-db-name "open_company_auth_dev"
         :hot-reload "true"
         :open-company-auth-passphrase "this_is_a_dev_secret" ; JWT secret
@@ -114,7 +114,7 @@
     :prod {
       :env {
         :env "production"
-        :db-name "open_company_reminder"
+        :db-name "open_company_storage"
         :auth-db-name "open_company_auth"
         :hot-reload "false"
       }

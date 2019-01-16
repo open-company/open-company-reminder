@@ -31,7 +31,7 @@
 (defonce db-host (or (env :db-host) "localhost"))
 (defonce db-port (or (env :db-port) 28015))
 
-(defonce db-name (or (env :db-name) "open_company_reminder"))
+(defonce db-name (or (env :db-name) "open_company_storage"))
 (defonce auth-db-name (or (env :auth-db-name) "open_company_auth"))
 
 (defonce db-pool-size (or (env :db-pool-size) (- core-async-limit 21))) ; conservative with the core.async limit
