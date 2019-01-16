@@ -131,7 +131,7 @@
   ;; Authorization
   :allowed? (by-method {
     :options true
-    :get (fn [ctx] (allow-user conn org-uuid (:user ctx)))
+    :get (fn [ctx] (allow-author conn org-uuid (:user ctx)))
     :post (fn [ctx] (allow-author conn org-uuid (:user ctx)))})
 
   ;; Existentialism
