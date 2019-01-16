@@ -22,6 +22,8 @@
     ;; NB: joda-time pulled in by oc.lib via clj-time
     ;; NB: commons-codec pulled in by oc.lib
     [ring/ring-core "1.7.1" :exclusions [clj-time joda-time commons-codec]]
+    ;; CORS library https://github.com/jumblerg/ring.middleware.cors
+    [jumblerg/ring.middleware.cors "1.0.1"]
     ;; Ring logging https://github.com/nberger/ring-logger-timbre
     ;; NB: com.taoensso/encore pulled in by oc.lib
     ;; NB: com.taoensso/timbre pulled in by oc.lib

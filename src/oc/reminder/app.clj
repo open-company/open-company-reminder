@@ -11,6 +11,7 @@
     [ring.middleware.params :refer (wrap-params)]
     [ring.middleware.reload :refer (wrap-reload)]
     [ring.middleware.cookies :refer (wrap-cookies)]
+    [ring.middleware.cors :refer (wrap-cors)]
     [compojure.core :as compojure :refer (GET)]
     [com.stuartsierra.component :as component]
     [oc.lib.sentry-appender :as sa]
@@ -65,6 +66,7 @@
     true              wrap-params
     true              wrap-cookies
     c/liberator-trace (wrap-trace :header :ui)
+    true              (wrap-cors #".*")
     c/hot-reload      wrap-reload))
 
 (defn start
