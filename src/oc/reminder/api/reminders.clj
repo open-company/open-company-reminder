@@ -4,6 +4,7 @@
             [compojure.core :as compojure :refer (ANY)]
             [liberator.core :refer (defresource by-method)]
             [taoensso.timbre :as timbre]
+            [oc.lib.schema :as lib-schema]
             [schema.core :as schema]
             [oc.lib.db.pool :as pool]
             [oc.lib.api.common :as api-common]
@@ -36,6 +37,17 @@
     (catch clojure.lang.ExceptionInfo e
       [false, {:reason (.getMessage e)}]))) ; Not a valid new reminder
 
+(defn- valid-reminder-update? [conn auth-conn org-uuid reminder-uuid ctx]
+  (if-let [existing-reminder (reminder-res/get-reminder conn org-uuid reminder-uuid)]
+    ;; Merge the existing reminder with the new updates
+    (let [updated-reminder (merge existing-reminder (reminder-res/clean (:data ctx)))]
+      (if (lib-schema/valid? reminder-res/Reminder updated-reminder)
+        {:existing-reminder (api-common/rep existing-reminder)
+         :updated-reminder (api-common/rep updated-reminder)}
+        [false, {:updated-reminder (api-common/rep updated-reminder)}])) ; invalid update
+    
+    true)) ; no existing reminder, so this will fail existence check later and 404
+
 ;; ----- Actions -----
 
 (defn create-reminder [conn org-uuid ctx]
@@ -59,7 +71,7 @@
 ;; ----- Resources - see: http://clojure-liberator.github.io/liberator/assets/img/decision-graph.svg
 
 ;; A resource for operations on a particular reminder
-(defresource reminder [conn org-uuid reminder-uuid]
+(defresource reminder [conn auth-conn org-uuid reminder-uuid]
   (api-common/open-company-authenticated-resource config/passphrase) ; verify validity and presence of required JWToken
 
   :allowed-methods [:options :get :delete]
@@ -86,7 +98,7 @@
   :processable? (by-method {
     :options true
     :get true
-    :patch false ; TODO (fn [ctx] (valid-reminder-update? conn org-uuid reminder-uuid (:data ctx))))
+    :patch (fn [ctx] (valid-reminder-update? conn auth-conn org-uuid reminder-uuid (:data ctx)))
     :delete true})
 
   ;; Existentialism
@@ -98,7 +110,7 @@
                         false))
 
   ;; Actions
-  ; :patch! (fn [ctx] (update-reminder conn org-uuid reminder-uuid ctx)
+  ;;:patch! (fn [ctx] (update-reminder conn org-uuid reminder-uuid ctx)
   :delete! (fn [ctx] (delete-reminder conn org-uuid reminder-uuid ctx))
 
   ;; Responses
@@ -181,8 +193,10 @@
       (ANY "/orgs/:org-uuid/reminders/:reminder-uuid"
         [org-uuid reminder-uuid]
         (pool/with-pool [conn db-pool] 
-          (reminder conn org-uuid reminder-uuid)))
+          (pool/with-pool [auth-conn auth-db-pool]
+            (reminder conn auth-conn org-uuid reminder-uuid))))
       (ANY "/orgs/:org-uuid/reminders/:reminder-uuid/"
         [org-uuid reminder-uuid]
         (pool/with-pool [conn db-pool] 
-          (reminder conn org-uuid reminder-uuid))))))
+          (pool/with-pool [auth-conn auth-db-pool]
+            (reminder conn auth-conn org-uuid reminder-uuid)))))))
