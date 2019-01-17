@@ -37,10 +37,10 @@
     (catch clojure.lang.ExceptionInfo e
       [false, {:reason (.getMessage e)}]))) ; Not a valid new reminder
 
-(defn- valid-reminder-update? [conn auth-conn org-uuid reminder-uuid ctx]
+(defn- valid-reminder-update? [conn auth-conn org-uuid reminder-uuid reminder-props]
   (if-let [existing-reminder (reminder-res/get-reminder conn org-uuid reminder-uuid)]
     ;; Merge the existing reminder with the new updates
-    (let [updated-reminder (merge existing-reminder (reminder-res/clean (:data ctx)))]
+    (let [updated-reminder (merge existing-reminder (reminder-res/clean reminder-props))]
       (if (lib-schema/valid? reminder-res/Reminder updated-reminder)
         {:existing-reminder (api-common/rep existing-reminder)
          :updated-reminder (api-common/rep updated-reminder)}
@@ -60,6 +60,19 @@
       
     (do (timbre/error "Failed creating reminder for org:" org-uuid) false)))
 
+; (defn- update-reminder [conn org-uuid reminder-uuid ctx]
+;   (timbre/info "Updating reminder:" reminder-uuid "for org:" org-uuid)
+;   (if-let* [org (:existing-org ctx)
+;             reminder (:existing-reminder ctx)
+;             updated-reminder (:updated-reminder ctx)
+;             updated-result (reminder-res/update-reminder! conn reminder-uuid updated-reminder user)]
+;     (do
+;       (timbre/info "Updating reminder:" reminder-uuid "for org:" org-uuid)
+;       ;(notification/send-trigger! (notification/->trigger :update org board {:old entry :new updated-result} user nil))
+;       {:updated-reminder (api-common/rep updated-result)})
+
+;     (do (timbre/error "Failed updating reminder:" reminder-uuid "for org:" org-uuid) false)))
+
 (defn- delete-reminder [conn org-uuid reminder-uuid ctx]
   (timbre/info "Deleting reminder:" reminder-uuid "for org:" org-uuid)
   (if-let* [org (:existing-org ctx)
@@ -74,7 +87,7 @@
 (defresource reminder [conn auth-conn org-uuid reminder-uuid]
   (api-common/open-company-authenticated-resource config/passphrase) ; verify validity and presence of required JWToken
 
-  :allowed-methods [:options :get :delete]
+  :allowed-methods [:options :get :patch :delete]
 
   ;; Media type client accepts
   :available-media-types [reminder-rep/media-type]

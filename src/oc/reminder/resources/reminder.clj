@@ -44,11 +44,15 @@
 (def WeekOccurrence (schema/pred #(#{:monday :tuesday :wednesday :thursday :friday :saturday :sunday} (keyword %))))
 (def PeriodOccurrence (schema/pred #(#{:first :first-monday :last-friday :last} (keyword %))))
 
+(def ContributingAuthor
+  "An author in a sequence of Authors involved in creating/updating the reminder."
+  (merge lib-schema/Author {:updated-at lib-schema/ISO8601}))
+
 (def Reminder {
   :uuid lib-schema/UniqueID
   :org-uuid lib-schema/UniqueID
   :headline lib-schema/NonBlankStr
-  :author lib-schema/Author
+  :author [ContributingAuthor]
   :assignee lib-schema/Author
   :frequency Frequency
   :week-occurrence WeekOccurrence
@@ -80,7 +84,7 @@
         (assoc :uuid (db-common/unique-id))
         (assoc :org-uuid org-uuid)
         (update :headline #(or (oc-str/strip-xss-tags %) ""))
-        (assoc :author author)
+        (assoc :author [(assoc author :updated-at ts)])
         (assoc :assignee assignee)
         (assoc :assignee-timezone assignee-tz)
         (update :week-occurrence #(or % :monday))
@@ -108,6 +112,24 @@
   ([conn org-uuid :- lib-schema/UniqueID uuid :- lib-schema/UniqueID]
   (when-let [reminder (get-reminder conn uuid)]
     (when (= org-uuid (:org-uuid reminder)) reminder)))) ; ensure reminder is for the specified org
+
+; (schema/defn ^:always-validate update-reminder! :- (schema/maybe Reminder)
+;   "
+;   Given the UUID of the reminder, an updated reminder property map, and a user (as the author), update the reminder and
+;   return the updated reminder on success.
+
+;   Throws an exception if the merge of the prior reminder and the updated reminder property map doesn't conform
+;   to the Reminder schema.
+;   "
+;   [conn uuid :- lib-schema/UniqueID reminder user :- lib-schema/User]
+;   {:pre [(db-common/conn? conn)         
+;          (map? reminder)]}
+;   (if-let [original-reminder (get-reminder conn uuid)]
+;     (let [ts (db-common/current-timestamp)
+;           authors-reminder (add-author-to-reminder original-reminder reminder user)]
+;       (let [updated-entry (update-entry conn authors-entry original-entry ts)]
+;         ;; copy current version to versions table, increment revision uuid
+;         (create-version conn updated-entry original-entry)))))
 
 (schema/defn ^:always-validate delete-reminder!
   "Given the UUID of the reminedr, delete the reminder. Return `true` on success."
