@@ -43,7 +43,7 @@
     ;; TODO validate the assignee is an author/admin of the org/team
     (if-let* [assignee-id (or (-> reminder-props :assignee :user-id) (-> existing-reminder :assignee :user-id))
               assignee (if (= assignee-id (-> existing-reminder :assignee :user-id))
-                          (-> existing-reminder :assignee)
+                          (:assignee existing-reminder)
                           (user-res/get-user auth-conn assignee-id))
               merged-reminder (merge existing-reminder (reminder-res/clean reminder-props))
               updated-reminder (assoc merged-reminder :assignee assignee)]
