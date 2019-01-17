@@ -42,16 +42,15 @@
     (select-occurrence reminder)))
 
 (defn- reminder-collection-links [reminder]
-  (assoc (render-reminder-for-collection reminder) :links [(item-link reminder)]))
+  (assoc (render-reminder-for-collection reminder) :links [(item-link reminder)
+                                                           (partial-update-link reminder)
+                                                           (delete-link reminder)]))
 
 (defn render-reminder
   "Create a JSON representation of a reminder for the API"
   [reminder]
   ;; TODO access control
-  (json/generate-string
-    (assoc (render-reminder-for-collection reminder) :links [(self-link reminder)
-                                                             (partial-update-link reminder)
-                                                             (delete-link reminder)])
+  (json/generate-string (render-reminder-for-collection reminder)
     {:pretty config/pretty?}))
 
 (defn render-reminder-list
