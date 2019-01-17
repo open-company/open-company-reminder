@@ -12,7 +12,8 @@
             [oc.reminder.config :as config]
             [oc.reminder.resources.reminder :as reminder-res]
             [oc.reminder.resources.user :as user-res]
-            [oc.reminder.representations.reminder :as reminder-rep]))
+            [oc.reminder.representations.reminder :as reminder-rep]
+            [oc.reminder.representations.user :as user-rep]))
 
 ;; ----- Validations -----
 
@@ -192,12 +193,49 @@
   :handle-unprocessable-entity (fn [ctx]
     (api-common/unprocessable-entity-response (:reason ctx))))
 
+;; A resource for operations on all eligible assignees of a particular org
+(defresource assignee-list [conn auth-conn org-uuid]
+  (api-common/open-company-authenticated-resource config/passphrase) ; verify validity and presence of required JWToken
+
+  :allowed-methods [:options :get]
+
+  ;; Media type client accepts
+  :available-media-types (by-method {
+                            :get [user-rep/collection-media-type]})
+  :handle-not-acceptable (by-method {
+                            :get (api-common/only-accept 406 user-rep/collection-media-type)})
+
+  ;; Authorization
+  :allowed? (by-method {
+    :options true
+    :get (fn [ctx] (allow-author conn org-uuid (:user ctx)))})
+
+  ;; Existentialism
+  :exists? (fn [ctx] (if-let* [org (first (db-common/read-resources conn "orgs" "uuid" org-uuid))
+                               assignees (user-res/get-eligible-assignees conn auth-conn org-uuid)]
+                        {:existing-org (api-common/rep org) :assignees assignees}
+                        false))
+
+  ;; Responses
+  :handle-ok (fn [ctx] (user-rep/render-assignee-list org-uuid (:assignees ctx) (:access-level ctx))))
+
 ;; ----- Routes -----
 
 (defn routes [sys]
   (let [db-pool (-> sys :db-pool :pool)
         auth-db-pool (-> sys :auth-db-pool :pool)]
     (compojure/routes
+      ;; Assignee list operations
+      (ANY "/orgs/:org-uuid/assignee-roster"
+        [org-uuid]
+        (pool/with-pool [conn db-pool]
+          (pool/with-pool [auth-conn auth-db-pool]
+            (assignee-list conn auth-conn org-uuid))))
+      (ANY "/orgs/:org-uuid/assignee-roster/"
+        [org-uuid]
+        (pool/with-pool [conn db-pool]
+          (pool/with-pool [auth-conn auth-db-pool]
+            (assignee-list conn auth-conn org-uuid))))
       ;; Reminder list operations
       (ANY "/orgs/:org-uuid/reminders"
         [org-uuid]

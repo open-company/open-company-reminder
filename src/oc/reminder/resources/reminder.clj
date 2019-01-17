@@ -5,7 +5,6 @@
             [oc.lib.schema :as lib-schema]
             [oc.lib.text :as oc-str]
             [oc.lib.db.common :as db-common]
-            [oc.lib.jwt :as jwt]
             [oc.reminder.resources.user :as user-res]))
 
 (def reminder-props [:uuid :org-uuid 
@@ -31,11 +30,6 @@
   "Remove any reserved properties from the reminder."
   [reminder]
   (apply dissoc reminder reserved-properties))
-
-(defn- author-for [user]
-  (-> user
-    (lib-schema/author-for-user)
-    (update :name #(or % (jwt/name-for user)))))
 
 (defn- add-author-to-reminder
   [original-reminder reminder user]
@@ -81,9 +75,9 @@
   {:pre [(db-common/conn? auth-conn)
          (map? reminder-props)]}
   (when-let* [ts (db-common/current-timestamp)
-              author (author-for user)
+              author (user-res/author-for user)
               assignee-user (user-res/get-user auth-conn (-> reminder-props :assignee :user-id))
-              assignee (author-for assignee-user)
+              assignee (user-res/author-for assignee-user)
               assignee-tz (:timezone assignee-user)]
     (-> reminder-props
         keywordize-keys
@@ -134,7 +128,7 @@
   (when-let [original-reminder (get-reminder conn uuid)]
     (when-let* [ts (db-common/current-timestamp)
                 assignee-user (user-res/get-user auth-conn (-> reminder :assignee :user-id))
-                assignee (author-for assignee-user)
+                assignee (user-res/author-for assignee-user)
                 assignee-tz (:timezone assignee-user)
                 ;; TODO update next send based on new props and/or assignee TZ
                 assignee-reminder (-> reminder

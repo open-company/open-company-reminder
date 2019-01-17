@@ -2,7 +2,8 @@
   "Resource representations for OpenCompany reminders."
   (:require [cheshire.core :as json]
             [oc.lib.hateoas :as hateoas]
-            [oc.reminder.config :as config]))
+            [oc.reminder.config :as config]
+            [oc.reminder.representations.user :as user-rep]))
 
 ;; Reminder media types
 (def media-type "application/vnd.open-company.reminder.v1+json")
@@ -28,6 +29,9 @@
 (defn- partial-update-link [reminder]
   (hateoas/partial-update-link (url reminder) {:content-type media-type
                                                :accept media-type}))
+
+(defn roster-link [org-uuid]
+  (hateoas/link-map "roster" hateoas/GET (user-rep/url org-uuid) {:accept user-rep/collection-media-type}))
 
 (defn- delete-link [reminder]
   (hateoas/delete-link (url reminder)))
@@ -61,7 +65,7 @@
   [org-uuid reminders access]
   (let [links [(hateoas/self-link (org-url org-uuid) {:accept collection-media-type})]
         full-links (if (= access :author)
-                      (conj links (create-link org-uuid))
+                      (concat links [(create-link org-uuid) (roster-link org-uuid)])
                       links)]
   (json/generate-string
     {:collection {:version hateoas/json-collection-version
