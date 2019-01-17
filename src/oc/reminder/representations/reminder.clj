@@ -50,7 +50,10 @@
   "Create a JSON representation of a reminder for the API"
   [reminder]
   ;; TODO access control
-  (json/generate-string (render-reminder-for-collection reminder)
+  (json/generate-string
+    (assoc (render-reminder-for-collection reminder) :links [(self-link reminder)
+                                                             (partial-update-link reminder)
+                                                             (delete-link reminder)])
     {:pretty config/pretty?}))
 
 (defn render-reminder-list
