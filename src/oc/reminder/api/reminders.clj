@@ -29,7 +29,7 @@
     ;; Create the new reminder from the data provided
     (let [reminder-map (:data ctx)
           author (:user ctx)]
-      ;; TODO validate the assignee is an author/admin
+      ;; TODO validate the assignee is an author/admin of the org/team
       (if-let [assignee (user-res/get-user auth-conn (-> reminder-map :assignee :user-id))] ; the assignee exists?
         {:new-reminder (api-common/rep (reminder-res/->reminder auth-conn org-uuid reminder-map author))}
         [false, {:reason "Assignee is not a valid user."}]))
@@ -40,7 +40,13 @@
 (defn- valid-reminder-update? [conn auth-conn org-uuid reminder-uuid reminder-props]
   (if-let [existing-reminder (reminder-res/get-reminder conn org-uuid reminder-uuid)]
     ;; Merge the existing reminder with the new updates
-    (let [updated-reminder (merge existing-reminder (reminder-res/clean reminder-props))]
+    ;; TODO validate the assignee is an author/admin of the org/team
+    (if-let* [assignee-id (or (-> reminder-props :assignee :user-id) (-> existing-reminder :assignee :user-id))
+              assignee (if (= assignee-id (-> existing-reminder :assignee :user-id))
+                          (-> existing-reminder :assignee)
+                          (user-res/get-user auth-conn assignee-id))
+              merged-reminder (merge existing-reminder (reminder-res/clean reminder-props))
+              updated-reminder (assoc merged-reminder :assignee assignee)]
       (if (lib-schema/valid? reminder-res/Reminder updated-reminder)
         {:existing-reminder (api-common/rep existing-reminder)
          :updated-reminder (api-common/rep updated-reminder)}
@@ -60,18 +66,19 @@
       
     (do (timbre/error "Failed creating reminder for org:" org-uuid) false)))
 
-; (defn- update-reminder [conn org-uuid reminder-uuid ctx]
-;   (timbre/info "Updating reminder:" reminder-uuid "for org:" org-uuid)
-;   (if-let* [org (:existing-org ctx)
-;             reminder (:existing-reminder ctx)
-;             updated-reminder (:updated-reminder ctx)
-;             updated-result (reminder-res/update-reminder! conn reminder-uuid updated-reminder user)]
-;     (do
-;       (timbre/info "Updating reminder:" reminder-uuid "for org:" org-uuid)
-;       ;(notification/send-trigger! (notification/->trigger :update org board {:old entry :new updated-result} user nil))
-;       {:updated-reminder (api-common/rep updated-result)})
+(defn- update-reminder [conn auth-conn org-uuid reminder-uuid ctx]
+  (timbre/info "Updating reminder:" reminder-uuid "for org:" org-uuid)
+  (if-let* [user (:user ctx)
+            org (:existing-org ctx)
+            reminder (:existing-reminder ctx)
+            updated-reminder (:updated-reminder ctx)
+            updated-result (reminder-res/update-reminder! conn auth-conn reminder-uuid updated-reminder user)]
+    (do
+      (timbre/info "Updating reminder:" reminder-uuid "for org:" org-uuid)
+      ;(notification/send-trigger! (notification/->trigger :update org board {:old entry :new updated-result} user nil))
+      {:updated-reminder (api-common/rep updated-result)})
 
-;     (do (timbre/error "Failed updating reminder:" reminder-uuid "for org:" org-uuid) false)))
+    (do (timbre/error "Failed updating reminder:" reminder-uuid "for org:" org-uuid) false)))
 
 (defn- delete-reminder [conn org-uuid reminder-uuid ctx]
   (timbre/info "Deleting reminder:" reminder-uuid "for org:" org-uuid)
@@ -123,7 +130,7 @@
                         false))
 
   ;; Actions
-  ;;:patch! (fn [ctx] (update-reminder conn org-uuid reminder-uuid ctx)
+  :patch! (fn [ctx] (update-reminder conn auth-conn org-uuid reminder-uuid ctx))
   :delete! (fn [ctx] (delete-reminder conn org-uuid reminder-uuid ctx))
 
   ;; Responses

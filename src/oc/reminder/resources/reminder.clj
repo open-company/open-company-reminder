@@ -35,7 +35,14 @@
 (defn- author-for [user]
   (-> user
     (lib-schema/author-for-user)
-    (assoc :name (jwt/name-for user))))
+    (update :name #(or % (jwt/name-for user)))))
+
+(defn- add-author-to-reminder
+  [original-reminder reminder user]
+  (let [authors (:author original-reminder)
+        ts (db-common/current-timestamp)
+        updated-authors (concat authors [(assoc (lib-schema/author-for-user user) :updated-at ts)])]
+    (assoc reminder :author updated-authors)))
 
 ;; ----- Data Schema -----
 
@@ -113,23 +120,29 @@
   (when-let [reminder (get-reminder conn uuid)]
     (when (= org-uuid (:org-uuid reminder)) reminder)))) ; ensure reminder is for the specified org
 
-; (schema/defn ^:always-validate update-reminder! :- (schema/maybe Reminder)
-;   "
-;   Given the UUID of the reminder, an updated reminder property map, and a user (as the author), update the reminder and
-;   return the updated reminder on success.
+(schema/defn ^:always-validate update-reminder! :- (schema/maybe Reminder)
+  "
+  Given the UUID of the reminder, an updated reminder property map, and a user (as the author), update the reminder and
+  return the updated reminder on success.
 
-;   Throws an exception if the merge of the prior reminder and the updated reminder property map doesn't conform
-;   to the Reminder schema.
-;   "
-;   [conn uuid :- lib-schema/UniqueID reminder user :- lib-schema/User]
-;   {:pre [(db-common/conn? conn)         
-;          (map? reminder)]}
-;   (if-let [original-reminder (get-reminder conn uuid)]
-;     (let [ts (db-common/current-timestamp)
-;           authors-reminder (add-author-to-reminder original-reminder reminder user)]
-;       (let [updated-entry (update-entry conn authors-entry original-entry ts)]
-;         ;; copy current version to versions table, increment revision uuid
-;         (create-version conn updated-entry original-entry)))))
+  Throws an exception if the merge of the prior reminder and the updated reminder property map doesn't conform
+  to the Reminder schema.
+  "
+  [conn auth-conn uuid :- lib-schema/UniqueID reminder user :- lib-schema/User]
+  {:pre [(db-common/conn? conn)         
+         (map? reminder)]}
+  (when-let [original-reminder (get-reminder conn uuid)]
+    (when-let* [ts (db-common/current-timestamp)
+                assignee-user (user-res/get-user auth-conn (-> reminder :assignee :user-id))
+                assignee (author-for assignee-user)
+                assignee-tz (:timezone assignee-user)
+                ;; TODO update next send based on new props and/or assignee TZ
+                assignee-reminder (-> reminder
+                                    (assoc :assignee assignee)
+                                    (assoc :assignee-timezone assignee-tz))
+                authors-reminder (add-author-to-reminder original-reminder assignee-reminder user)]
+      (schema/validate Reminder authors-reminder)
+      (db-common/update-resource conn table-name primary-key original-reminder authors-reminder ts))))
 
 (schema/defn ^:always-validate delete-reminder!
   "Given the UUID of the reminedr, delete the reminder. Return `true` on success."
