@@ -27,7 +27,8 @@
   (when-let* [org (first (db-common/read-resources conn "orgs" "uuid" org-uuid))
               author-ids (:authors org)
               authors (db-common/read-resources auth-conn "users" "user-id" author-ids)
-              active-authors (filter #(= "active" (:status %)) authors)]
+              ;; TODO we'll need to give the UI some indication of users that are pending/verification
+              active-authors authors] ;(filter #(= "active" (:status %)) authors)
     (map author-for active-authors)))
 
 (schema/defn ^:always-validate get-user

@@ -91,7 +91,7 @@
         (update :week-occurrence #(or % :monday))
         (update :period-occurrence #(or % :first))
         (assoc :last-sent nil)
-        (assoc :next-send ts) ; TODO
+        (assoc :next-send ts) ; TODO (this is just a test)
         (assoc :created-at ts)
         (assoc :updated-at ts))))
 
