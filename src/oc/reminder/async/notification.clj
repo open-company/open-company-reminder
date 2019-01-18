@@ -3,6 +3,7 @@
    (:require [clojure.core.async :as async :refer (<! >!!)]
              [taoensso.timbre :as timbre]
              [amazonica.aws.sqs :as sqs]
+             [cheshire.core :as json]
              [schema.core :as schema]
              [oc.lib.schema :as lib-schema]
              [oc.reminder.config :as config]
@@ -20,8 +21,8 @@
 
 (def NotificationTrigger
   {
-    :type (schema/enum :reminder)
     :notification-type (schema/pred notification-type?)
+    :resource-type (schema/enum :reminder)
     :org {
       :slug lib-schema/NonBlankStr
       :name lib-schema/NonBlankStr
@@ -52,7 +53,7 @@
    {:access-key config/aws-access-key-id
     :secret-key config/aws-secret-access-key}
    config/aws-sqs-notify-queue
-   trigger)
+   {:body (json/generate-string  {:Message trigger} {:pretty true})})
   (timbre/info "Request sent to:" config/aws-sqs-notify-queue))
 
 ;; ----- Event loop -----
@@ -78,8 +79,8 @@
   (let [frequency (keyword (:frequency reminder))
         weekly? (or (= frequency :weekly) (= frequency :biweekly))
         occurrence-key (if weekly? :week-occurrence :period-occurrence)]
-    (merge {:type :reminder
-            :notification-type notification-type
+    (merge {:notification-type notification-type
+            :resource-type :reminder
             :org {:slug (:slug org)
                   :name (:name org)
                   :uuid (:uuid org)
@@ -93,14 +94,14 @@
 (schema/defn ^:always-validate send-trigger! 
 
   ([trigger :- NotificationTrigger]
-  (if (= (-> trigger :assignee :user-id) (-> trigger :author :user-id))
+  (if (= (-> trigger :reminder :assignee :user-id) (-> trigger :reminder :author :user-id))
     (timbre/debug "Skipping notification (self-reminder) for:" trigger)
     (do
       (timbre/debug "Triggering a notification for:" trigger)
       (>!! notification-chan trigger))))
 
   ([trigger :- NotificationTrigger original-reminder :- reminder-res/Reminder]
-  (if (= (-> trigger :assignee :user-id) (-> original-reminder :assignee :user-id))
+  (if (= (-> trigger :reminder :assignee :user-id) (-> original-reminder :reminder :assignee :user-id))
     (timbre/debug "Skipping notification (same assignee) for:" trigger)
     (send-trigger! trigger))))
   
