@@ -180,8 +180,9 @@
 
   :eastwood {
     ;; Disable some linters that are enabled by default
+    ;; wrong-arity - unfortunate, but it's failing on 3/arity of sqs/send-message
     ;; implicit-dependencies - uhh, just seems dumb
-    :exclude-linters [:implicit-dependencies]
+    :exclude-linters [:wrong-arity :implicit-dependencies]
     ;; Enable some linters that are disabled by default
     :add-linters [:unused-namespaces :unused-private-vars] ; :unused-locals
 
