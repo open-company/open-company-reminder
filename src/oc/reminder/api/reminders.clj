@@ -10,6 +10,7 @@
             [oc.lib.api.common :as api-common]
             [oc.lib.db.common :as db-common]
             [oc.reminder.config :as config]
+            [oc.reminder.async.notification :as notification]
             [oc.reminder.resources.reminder :as reminder-res]
             [oc.reminder.resources.user :as user-res]
             [oc.reminder.representations.reminder :as reminder-rep]
@@ -59,10 +60,13 @@
 
 (defn create-reminder [conn org-uuid ctx]
   (timbre/info "Creating reminder in org:" org-uuid)
-  (if-let* [new-reminder (:new-reminder ctx)
+  (if-let* [user (:user ctx)
+            org (:existing-org ctx)
+            new-reminder (:new-reminder ctx)
             reminder-result (reminder-res/create-reminder! conn new-reminder)] ; Add the reminder
     (do
       (timbre/info "Created reminder:" (:uuid reminder-result) "in org:" org-uuid)
+      (notification/send-trigger! (notification/->trigger :add org reminder-result))
       {:created-reminder (api-common/rep reminder-result)})
       
     (do (timbre/error "Failed creating reminder for org:" org-uuid) false)))
@@ -76,7 +80,7 @@
             updated-result (reminder-res/update-reminder! conn auth-conn reminder-uuid updated-reminder user)]
     (do
       (timbre/info "Updating reminder:" reminder-uuid "for org:" org-uuid)
-      ;(notification/send-trigger! (notification/->trigger :update org board {:old entry :new updated-result} user nil))
+      (notification/send-trigger! (notification/->trigger :update org updated-result) reminder)
       {:updated-reminder (api-common/rep updated-result)})
 
     (do (timbre/error "Failed updating reminder:" reminder-uuid "for org:" org-uuid) false)))

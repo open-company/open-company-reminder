@@ -92,6 +92,7 @@
         :open-company-auth-passphrase "this_is_a_dev_secret" ; JWT secret
         :aws-access-key-id "CHANGE-ME"
         :aws-secret-access-key "CHANGE-ME"
+        :aws-sqs-notify-queue "CHANGE-ME"
         :liberator-trace "true"
         :log-level "debug"
       }

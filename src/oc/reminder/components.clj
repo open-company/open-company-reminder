@@ -3,6 +3,7 @@
             [taoensso.timbre :as timbre]
             [org.httpkit.server :as httpkit]
             [oc.lib.db.pool :as pool]
+            [oc.reminder.async.notification :as notification]
             [oc.reminder.schedule :as schedule]
             [oc.reminder.config :as c]))
 
@@ -34,6 +35,24 @@
         (dissoc component :pool))
       component)))
 
+(defrecord AsyncConsumers []
+  component/Lifecycle
+
+  (start [component]
+    (timbre/info "[async-consumers] starting")
+    (notification/start) ; core.async channel consumer for notification events
+    (timbre/info "[async-consumers] started")
+    (assoc component :async-consumers true))
+
+  (stop [{:keys [async-consumers] :as component}]
+    (if async-consumers
+      (do
+        (timbre/info "[async-consumers] stopping")
+        (notification/stop) ; core.async channel consumer for notification events
+        (timbre/info "[async-consumers] stopped")
+        (dissoc component :async-consumers))
+    component)))
+
 (defrecord Handler [handler-fn]
   component/Lifecycle
   (start [component]
@@ -57,6 +76,9 @@
     :db-pool (map->RethinkPool {:db-options c/db-options :size c/db-pool-size :regenerate-interval 5})
     :auth-db-pool (map->RethinkPool
                     {:db-options c/auth-db-options :size c/db-pool-size :regenerate-interval 5})
+    :async-consumers (component/using
+                        (map->AsyncConsumers {})
+                        [])
     :scheduler (if (pos? port)
                 (component/using
                   (map->Scheduler {})
