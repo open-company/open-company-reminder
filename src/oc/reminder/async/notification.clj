@@ -53,7 +53,7 @@
    {:access-key config/aws-access-key-id
     :secret-key config/aws-secret-access-key}
    config/aws-sqs-notify-queue
-   {:body (json/generate-string  {:Message trigger} {:pretty true})})
+   (json/generate-string trigger {:pretty true}))
   (timbre/info "Request sent to:" config/aws-sqs-notify-queue))
 
 ;; ----- Event loop -----
