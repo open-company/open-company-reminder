@@ -17,6 +17,11 @@
     (lib-schema/author-for-user)
     (update :name #(or % (jwt/name-for user)))))
 
+(defn assignee-for [user]
+  (-> (author-for user)
+    (assoc :email (:email user))
+    (assoc :status (:status user))))
+
 ;; ----- Users Read/Only -----
 
 (schema/defn ^:always-validate get-eligible-assignees
@@ -26,10 +31,8 @@
          (db-common/conn? auth-conn)]}
   (when-let* [org (first (db-common/read-resources conn "orgs" "uuid" org-uuid))
               author-ids (:authors org)
-              authors (db-common/read-resources auth-conn "users" "user-id" author-ids)
-              ;; TODO we'll need to give the UI some indication of users that are pending/verification
-              active-authors authors] ;(filter #(= "active" (:status %)) authors)
-    (map author-for active-authors)))
+              authors (db-common/read-resources auth-conn "users" "user-id" author-ids)]
+    (map assignee-for authors)))
 
 (schema/defn ^:always-validate get-user
   "Given the user-id of the user, retrieve them from the database, or return nil if they don't exist."

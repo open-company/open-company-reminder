@@ -12,7 +12,7 @@
   (str "/orgs/" org-uuid "/assignee-roster"))
 
 (defn render-assignee-list
-  "Create a JSON representation of a list of the org's reminders for the API."
+  "Create a JSON representation of a list of the org's reminder assignees for the API."
   [org-uuid users access]
   (let [links [(hateoas/self-link (url org-uuid) {:accept collection-media-type})]]
     (json/generate-string
