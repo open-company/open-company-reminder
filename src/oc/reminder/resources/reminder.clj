@@ -1,7 +1,9 @@
 (ns oc.reminder.resources.reminder
   (:require [clojure.walk :refer (keywordize-keys)]
             [if-let.core :refer (when-let*)]
+            [defun.core :refer (defun-)]
             [schema.core :as schema]
+            [java-time :as jt]
             [oc.lib.schema :as lib-schema]
             [oc.lib.text :as oc-str]
             [oc.lib.db.common :as db-common]
@@ -37,6 +39,37 @@
         ts (db-common/current-timestamp)
         updated-authors (concat authors [(assoc (lib-schema/author-for-user user) :updated-at ts)])]
     (assoc reminder :author updated-authors)))
+
+(defun- next-reminder-for
+
+  ;; Weekly
+  ([reminder :guard #(= (keyword (:frequency %)) :weekly) ts]
+  (assoc reminder :next-send ts))
+  
+  ;; TODO from ISO 8601
+  ; (let [local-ts (jt/with-zone-same-instant ts (:assignee-timezone reminder))
+  ;       occurrence (keyword (:week-occurrence reminder))
+  ;       a-send (-> local-ts
+  ;                   (jt/adjust :next-or-same-day-of-week occurrence)
+  ;                   (jt/adjust (jt/local-time 9)))
+  ;       next-send (if (jt/after? a-send local-ts)
+  ;                     a-send ; it's in the future
+  ;                     (jt/adjust a-send jt/plus (jt/days 7)))] ; it was in the past (or now)
+  ;   ;; TODO work this back into ISO8601
+  ;   (assoc reminder :next-send next-send)))
+
+  ;; Bi-weekly
+  ([reminder :guard #(= (keyword (:frequency %)) :biweekly) ts]
+  (assoc reminder :next-send ts))
+
+  ;; Monthly
+  ([reminder :guard #(= (keyword (:frequency %)) :monthly) ts]
+  (assoc reminder :next-send ts))
+
+
+  ;; Quarterly
+  ([reminder :guard #(= (keyword (:frequency %)) :quarterly) ts]
+  (assoc reminder :next-send ts)))
 
 ;; ----- Data Schema -----
 
@@ -91,9 +124,9 @@
         (update :week-occurrence #(or % :monday))
         (update :period-occurrence #(or % :first))
         (assoc :last-sent nil)
-        (assoc :next-send ts) ; TODO (this is just a test)
         (assoc :created-at ts)
-        (assoc :updated-at ts))))
+        (assoc :updated-at ts)
+        (next-reminder-for ts))))
 
 (schema/defn ^:always-validate create-reminder!
   "Create a reminder in the system. Throws a runtime exception if the reminder doesn't conform to the Reminder schema."
