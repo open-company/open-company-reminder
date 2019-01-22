@@ -178,23 +178,42 @@ EST          :monthly  :last-friday  2018   12      31     9      1       2019  
 CST          :monthly  :last         2018   12      31     8      59      2018        12           31
 UTC          :monthly  :last         2018   12      31     9      1       2019        1            31)
 
-  (future-facts "About quarterly reminders")
+  (tabular
+    (facts "About quarterly reminders"
+  
+      (let [initial-local (jt/with-zone 
+                            (jt/zoned-date-time ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi) ?assignee-tz)
+            initial-utc (jt/with-zone-same-instant initial-local UTC)
+            initial-iso (jt/format reminder/iso-format initial-utc)]
+        (:next-send (#'reminder/next-reminder-for {
+                      :frequency ?frequency
+                      :period-occurrence ?occurrence
+                      :assignee-timezone ?assignee-tz
+                      :next-send initial-iso})) => (verify ?reminder-y ?reminder-mo ?reminder-d ?assignee-tz)))
+
+?assignee-tz ?frequency ?occurrence   ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi ?reminder-y ?reminder-mo ?reminder-d
+;; Quarterly reminders before 9AM
+EST          :quarterly :first        2019   1       1      8      59      2019        1            1
+; EST          :quarterly :first-monday 2019   1       1      8      59      2019        1            7
+; EST          :quarterly :last-friday  2019   1       1      8      59      2019        3            29
+; EST          :quarterly :last         2019   1       1      8      59      2019        3            31
+; ;; Quarterly reminders at 9AM
+; UTC          :quarterly :first        2019   1       1      9      0       2019        4            1
+; ;; Quarterly reminders after 9AM
+; EST          :quarterly :first        2019   1       1      9      1       2019        4            1
+; ;; Quarterly reminders spanning a year
+; EST          :quarterly :first        2018   10      1      8      59      2018        10           1
+; EST          :quarterly :first        2018   10      1      9      1       2019        1            1
+; EST          :quarterly :first        2018   11      1      9      1       2019        1            1
+; EST          :quarterly :first        2018   12      1      9      1       2019        1            1
+; EST          :quarterly :first        2018   12      31     9      1       2019        1            1
+; EST          :quarterly :first-monday 2018   10      1      8      59      2018        10           1
+; EST          :quarterly :first-monday 2018   10      1      9      1       2019        1            7
+; EST          :quarterly :first-monday 2018   11      1      9      1       2019        1            7
+; EST          :quarterly :first-monday 2018   12      1      9      1       2019        1            7
+; EST          :quarterly :first-monday 2018   12      31     9      1       2019        1            7
+; EST          :quarterly :last-friday  2018   12      28     8      59      2018        12           28
+; EST          :quarterly :last-friday  2018   12      28     9      1       2019        3            29
 
 )
-
-(comment
-
-;; Monthly
-
-(jt/adjust now :first-day-of-month)
-
-(jt/adjust now :first-in-month :monday)
-
-(jt/adjust now :last-in-month :friday)
-
-(jt/adjust now :last-day-of-month)
-
-;; Quarterly
-
-
 )

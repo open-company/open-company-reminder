@@ -39,6 +39,7 @@
   (apply dissoc reminder reserved-properties))
 
 (defn- add-author-to-reminder
+  ""
   [original-reminder reminder user]
   (let [authors (:author original-reminder)
         ts (db-common/current-timestamp)
@@ -46,19 +47,34 @@
     (assoc reminder :author updated-authors)))
 
 (defun- adjust-day-of-month
+  ""
   ([ts adjustment :guard sequential?] (jt/adjust ts (first adjustment) (last adjustment)))
   ([ts adjustment] (jt/adjust ts adjustment)))  
 
-(defn- first-day-of-next-month 
+(defn- first-day-of-next-month
+  ""
   ([ts] (first-day-of-next-month ts ts))
   ([orig-ts updated-ts]
-  (if (= (jt/as orig-ts :month-of-year) (jt/as updated-ts :month-of-year))
+  (if (= (jt/as orig-ts :month-of-year) (jt/as updated-ts :month-of-year)) ; still the same month
     (first-day-of-next-month orig-ts (jt/plus updated-ts (jt/days 1)))
     updated-ts))) ; got to the next month
 
-(defn- adjust-for-month 
-  ([local-ts occurrence] (adjust-for-month local-ts local-ts occurrence)) ; stupid non-immutable Java
-  ([orig-ts local-ts occurrence]
+(def start-of-quarters #{1 4 7 10}) ; Months that begin a quarter
+(def end-of-quarters #{3 6 9 12}) ; Months that end a quarter
+
+(defn- first-day-of-next-quarter
+  ""
+  ([ts] (first-day-of-next-quarter ts ts))
+  ([orig-ts updated-ts]
+  (if (or (= (jt/as orig-ts :month-of-year) (jt/as updated-ts :month-of-year)) ; still the same month
+          (not (start-of-quarters (jt/as updated-ts :month-of-year)))) ; not a month that starts a quarter
+    (first-day-of-next-quarter orig-ts (jt/plus updated-ts (jt/days 1)))
+    updated-ts))) ; got to the next month
+
+(defn- adjust-for
+  ""
+  ([adjuster local-ts occurrence] (adjust-for adjuster local-ts local-ts occurrence))
+  ([adjuster orig-ts local-ts occurrence]
   (let [adjustment (case occurrence
                       :first :first-day-of-month
                       :first-monday [:first-in-month :monday]
@@ -69,9 +85,10 @@
                     (jt/adjust (jt/local-time 9)))]
     (if (jt/after? a-send orig-ts)
       a-send ; it's in the future, so all good
-      (adjust-for-month orig-ts (first-day-of-next-month a-send) occurrence))))) ; it was in the past (or now), so try again
+      (adjust-for adjuster orig-ts (adjuster a-send) occurrence))))) ; it was in the past (or now), so try again
 
 (defun- next-reminder-for
+  ""
 
   ([reminder] (next-reminder-for reminder (:next-send reminder)))
   
@@ -109,18 +126,18 @@
   (let [utc-ts (jt/with-zone (jt/zoned-date-time (f/parse joda-iso-format ts)) UTC)
         local-ts (jt/with-zone-same-instant utc-ts (:assignee-timezone reminder))
         occurrence (keyword (:period-occurrence reminder))
-        a-send (adjust-for-month local-ts occurrence)
+        a-send (adjust-for first-day-of-next-month local-ts occurrence)
         next-send (jt/with-zone-same-instant a-send UTC)]
     (assoc reminder :next-send (jt/format iso-format next-send))))
 
   ;; Quarterly
   ([reminder :guard #(= (keyword (:frequency %)) :quarterly) ts]
-  (assoc reminder :next-send ts)))
-
-; (jt/adjust now :first-day-of-month)
-; (jt/adjust now :first-in-month :monday)
-; (jt/adjust now :last-in-month :friday)
-; (jt/adjust now :last-day-of-month)
+  (let [utc-ts (jt/with-zone (jt/zoned-date-time (f/parse joda-iso-format ts)) UTC)
+        local-ts (jt/with-zone-same-instant utc-ts (:assignee-timezone reminder))
+        occurrence (keyword (:period-occurrence reminder))
+        a-send (adjust-for first-day-of-next-quarter local-ts occurrence)
+        next-send (jt/with-zone-same-instant a-send UTC)]
+    (assoc reminder :next-send (jt/format iso-format next-send)))))
 
 ;; ----- Data Schema -----
 
