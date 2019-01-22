@@ -3,6 +3,7 @@
             [if-let.core :refer (when-let*)]
             [defun.core :refer (defun-)]
             [schema.core :as schema]
+            [clj-time.format :as f]
             [java-time :as jt]
             [oc.lib.schema :as lib-schema]
             [oc.lib.text :as oc-str]
@@ -14,6 +15,10 @@
                      :frequency :week-occurrence :period-occurrence
                      :last-sent :next-send
                      :created-at :updated-at])
+
+(def iso-format (jt/formatter "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")) ; ISO 8601 (Java)
+(def joda-iso-format (f/formatters :date-time)) ; ISO 8601 (Joda)
+(def UTC "UTC")
 
 ;; ----- RethinkDB metadata -----
 
@@ -42,25 +47,36 @@
 
 (defun- next-reminder-for
 
+  ([reminder] (next-reminder-for reminder (:next-send reminder)))
+  
   ;; Weekly
   ([reminder :guard #(= (keyword (:frequency %)) :weekly) ts]
-  (assoc reminder :next-send ts))
-  
-  ;; TODO from ISO 8601
-  ; (let [local-ts (jt/with-zone-same-instant ts (:assignee-timezone reminder))
-  ;       occurrence (keyword (:week-occurrence reminder))
-  ;       a-send (-> local-ts
-  ;                   (jt/adjust :next-or-same-day-of-week occurrence)
-  ;                   (jt/adjust (jt/local-time 9)))
-  ;       next-send (if (jt/after? a-send local-ts)
-  ;                     a-send ; it's in the future
-  ;                     (jt/adjust a-send jt/plus (jt/days 7)))] ; it was in the past (or now)
-  ;   ;; TODO work this back into ISO8601
-  ;   (assoc reminder :next-send next-send)))
+  (let [utc-ts (jt/with-zone (jt/zoned-date-time (f/parse joda-iso-format ts)) UTC)
+        local-ts (jt/with-zone-same-instant utc-ts (:assignee-timezone reminder))
+        occurrence (keyword (:week-occurrence reminder))
+        a-send (-> local-ts
+                    (jt/adjust :next-or-same-day-of-week occurrence)
+                    (jt/adjust (jt/local-time 9)))
+        b-send (if (jt/after? a-send local-ts)
+                  a-send ; it's in the future
+                  (jt/adjust a-send jt/plus (jt/days 7))) ; it was in the past (or now)
+        next-send (jt/with-zone-same-instant b-send UTC)]
+    (assoc reminder :next-send (jt/format iso-format next-send))))
 
   ;; Bi-weekly
   ([reminder :guard #(= (keyword (:frequency %)) :biweekly) ts]
-  (assoc reminder :next-send ts))
+  (let [utc-ts (jt/with-zone (jt/zoned-date-time (f/parse joda-iso-format ts)) UTC)
+        local-ts (jt/with-zone-same-instant utc-ts (:assignee-timezone reminder))
+        occurrence (keyword (:week-occurrence reminder))
+        a-send (-> local-ts
+                    (jt/adjust :next-or-same-day-of-week occurrence)
+                    (jt/adjust (jt/local-time 9)))
+        b-send (if (jt/after? a-send local-ts)
+                  a-send ; it's in the future
+                  (jt/adjust a-send jt/plus (jt/days 7))) ; it was in the past (or now)
+        c-send (jt/adjust b-send jt/plus (jt/days 7)) ; an extra week for bi-weekly
+        next-send (jt/with-zone-same-instant c-send UTC)]
+    (assoc reminder :next-send (jt/format iso-format next-send))))
 
   ;; Monthly
   ([reminder :guard #(= (keyword (:frequency %)) :monthly) ts]

@@ -139,6 +139,7 @@
                  '[clojure.string :as s]
                  '[rethinkdb.query :as r]
                  '[schema.core :as schema]
+                 '[clj-time.format :as f]
                  '[java-time :as jt]
                  '[tick.core :as tick]
                  '[tick.timeline :as timeline]
