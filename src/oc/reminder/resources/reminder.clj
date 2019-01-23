@@ -271,18 +271,20 @@
     (when-let* [ts (db-common/current-timestamp)
                 assignee-user (user-res/get-user auth-conn (-> reminder :assignee :user-id))
                 assignee (user-res/author-for assignee-user)
-                assignee-tz (:timezone assignee-user)
                 ;; TODO update next send based on new props and/or assignee TZ
+                assignee-tz (:timezone assignee-user)
                 assignee-reminder (-> reminder
                                     (assoc :assignee assignee)
                                     (assoc :assignee-timezone assignee-tz))
                 authors-reminder (add-author-to-reminder original-reminder assignee-reminder user)
                 changed-reminder (merge original-reminder reminder)
                 next-send-reminder (if ; the frequency and occurrence settings didn't change
-                                       (= [(:frequency original-reminder)
+                                       (= [(:assignee-timezone original-reminder)
+                                           (:frequency original-reminder)
                                            (:week-occurrence original-reminder)
                                            (:period-occurrence original-reminder)]
-                                          [(:frequency changed-reminder)
+                                          [assignee-tz
+                                           (:frequency changed-reminder)
                                            (:week-occurrence changed-reminder)
                                            (:period-occurrence changed-reminder)])
                                       authors-reminder ; then the next-send doesn't need to change
