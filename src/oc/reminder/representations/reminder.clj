@@ -45,31 +45,42 @@
     (select-keys representation-props)
     (select-occurrence reminder)))
 
-(defn- reminder-collection-links [reminder]
-  (assoc (render-reminder-for-collection reminder) :links [(item-link reminder)
-                                                           (partial-update-link reminder)
-                                                           (delete-link reminder)]))
+(defn- reminder-collection-links [reminder access user]
+  (let [user-id (:user-id user)
+        links [(item-link reminder)]
+        full-links (if (or (= access :admin)
+                           (and (= access :author)
+                                (or (= user-id (-> reminder :assignee :user-id)) ; the asignee
+                                    ((set (:authors reminder)) user-id)))) ; an author
+                      (concat links [(partial-update-link reminder) (delete-link reminder)])
+                      links)]
+    (assoc (render-reminder-for-collection reminder) :links full-links)))
 
 (defn render-reminder
   "Create a JSON representation of a reminder for the API"
-  [reminder]
-  ;; TODO access control
+  [reminder access user]
+  (let [user-id (:user-id user)
+        links [(self-link reminder)]
+        full-links (if (or (= access :admin)
+                           (and (= access :author)
+                                (or (= user-id (-> reminder :assignee :user-id)) ; the asignee
+                                    ((set (:authors reminder)) user-id)))) ; an author
+                      (concat links [(partial-update-link reminder) (delete-link reminder)])
+                      links)]
   (json/generate-string
-    (assoc (render-reminder-for-collection reminder) :links [(self-link reminder)
-                                                             (partial-update-link reminder)
-                                                             (delete-link reminder)])
-    {:pretty config/pretty?}))
+    (assoc (render-reminder-for-collection reminder) :links full-links)
+    {:pretty config/pretty?})))
 
 (defn render-reminder-list
   "Create a JSON representation of a list of the org's reminders for the API."
-  [org-uuid reminders access]
+  [org-uuid reminders access user]
   (let [links [(hateoas/self-link (org-url org-uuid) {:accept collection-media-type})]
-        full-links (if (= access :author)
+        full-links (if (or (= access :admin) (= access :author))
                       (concat links [(create-link org-uuid) (roster-link org-uuid)])
                       links)]
   (json/generate-string
     {:collection {:version hateoas/json-collection-version
                   :href (org-url org-uuid)
                   :links full-links
-                  :items (map reminder-collection-links reminders)}}
+                  :items (map #(reminder-collection-links % access user) reminders)}}
     {:pretty config/pretty?})))

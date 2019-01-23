@@ -18,13 +18,38 @@
 
 ;; ----- Validations -----
 
-(defn- allow-user [conn org-uuid user]
-  ;; TODO verify user of this org, false if not
-  {:access-level :author})
+(defn- access-level [conn auth-conn org-uuid user]
+  (if-let* [org (first (db-common/read-resources conn "orgs" "uuid" org-uuid [:authors :viewers :team-id]))
+            team (db-common/read-resource auth-conn "teams" (:team-id org))
+            user-id (:user-id user)]
+    (cond
+      (set (:admins team)) :admin
+      (set (:authors org)) :author
+      (set (:viewers org)) :viewer
+      :else false)))
 
-(defn- allow-author [conn org-uuid user]
-  ;; TODO verigy author/admin of this org, false if not
-  {:access-level :author})
+(defn- allow-user [conn auth-conn org-uuid user]
+  (if-let [access-level (access-level conn auth-conn org-uuid user)]
+    {:access-level access-level}
+    false))
+
+(defn- allow-author [conn auth-conn org-uuid user]
+  (if-let* [access-level (access-level conn auth-conn org-uuid user)
+            level (#{:admin :author} access-level)]
+    {:access-level level}
+    false))
+
+(defn- allow-admin-or-party [conn auth-conn org-uuid reminder-uuid user]
+  (when-let [reminder (reminder-res/get-reminder conn reminder-uuid)] ; will 404 later if reminder isn't found
+    (if-let* [user-id (:user-id user)
+              access-level (access-level conn auth-conn org-uuid user)
+              level (#{:admin :author} access-level)
+              allowed? (or (= level :admin) ; an admin
+                           (and (= level :author) ; an author
+                                (or (= user-id (-> reminder :assignee :user-id)) ; the asignee
+                                    ((set (:authors reminder)) user-id))))] ; an author
+      {:access-level level :existing-reminder reminder}
+      false)))
 
 (defn- valid-new-reminder? [auth-conn org-uuid ctx]
   (try
@@ -115,9 +140,9 @@
   ;; Authorization
   :allowed? (by-method {
     :options true
-    :get (fn [ctx] (allow-user conn org-uuid (:user ctx)))
-    :patch (fn [ctx] (allow-author conn org-uuid (:user ctx)))
-    :delete (fn [ctx] (allow-author conn org-uuid (:user ctx)))})
+    :get (fn [ctx] (allow-user conn auth-conn org-uuid (:user ctx)))
+    :patch (fn [ctx] (allow-admin-or-party conn auth-conn org-uuid reminder-uuid (:user ctx)))
+    :delete (fn [ctx] (allow-admin-or-party conn auth-conn org-uuid reminder-uuid (:user ctx)))})
 
   ;; Validations
   :processable? (by-method {
@@ -140,8 +165,8 @@
 
   ;; Responses
   :handle-ok (by-method {
-    :get (fn [ctx] (reminder-rep/render-reminder (:existing-reminder ctx)))
-    :patch (fn [ctx] (reminder-rep/render-reminder (:updated-reminder ctx)))})
+    :get (fn [ctx] (reminder-rep/render-reminder (:existing-reminder ctx) (:access-level ctx) (:user ctx)))
+    :patch (fn [ctx] (reminder-rep/render-reminder (:updated-reminder ctx) (:access-level ctx) (:user ctx)))})
   :handle-unprocessable-entity (fn [ctx]
     (api-common/unprocessable-entity-response (schema/check reminder-res/Reminder (:updated-reminder ctx)))))
 
@@ -168,8 +193,8 @@
   ;; Authorization
   :allowed? (by-method {
     :options true
-    :get (fn [ctx] (allow-user conn org-uuid (:user ctx)))
-    :post (fn [ctx] (allow-author conn org-uuid (:user ctx)))})
+    :get (fn [ctx] (allow-user conn auth-conn org-uuid (:user ctx)))
+    :post (fn [ctx] (allow-author conn auth-conn org-uuid (:user ctx)))})
 
   ;; Existentialism
   :exists? (fn [ctx] (if-let [org (first (db-common/read-resources conn "orgs" "uuid" org-uuid))]
@@ -188,11 +213,11 @@
   ;; Responses
   :handle-ok (fn [ctx] (reminder-rep/render-reminder-list org-uuid
                                                           (reminder-res/list-reminders conn org-uuid)
-                                                          (:access-level ctx)))
+                                                          (:access-level ctx) (:user ctx)))
   :handle-created (fn [ctx] (let [new-reminder (:created-reminder ctx)]
                               (api-common/location-response
                                 (reminder-rep/url new-reminder)
-                                (reminder-rep/render-reminder new-reminder)
+                                (reminder-rep/render-reminder new-reminder (:access-level ctx) (:user ctx))
                                 reminder-rep/media-type)))
   :handle-unprocessable-entity (fn [ctx]
     (api-common/unprocessable-entity-response (:reason ctx))))
@@ -212,7 +237,7 @@
   ;; Authorization
   :allowed? (by-method {
     :options true
-    :get (fn [ctx] (allow-author conn org-uuid (:user ctx)))})
+    :get (fn [ctx] (allow-author conn auth-conn org-uuid (:user ctx)))})
 
   ;; Existentialism
   :exists? (fn [ctx] (if-let* [org (first (db-common/read-resources conn "orgs" "uuid" org-uuid))
