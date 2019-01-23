@@ -20,15 +20,17 @@
 
 (defn- access-level [conn auth-conn org-uuid user]
   (if-let* [org (first (db-common/read-resources conn "orgs" "uuid" org-uuid [:authors :viewers :team-id]))
-            team (db-common/read-resource auth-conn "teams" (:team-id org))
+            team-id (:team-id org)
+            team (db-common/read-resource auth-conn "teams" team-id)
             user-id (:user-id user)]
     (cond
-      (set (:admins team)) :admin
-      (set (:authors org)) :author
-      (set (:viewers org)) :viewer
+      ((set (:admins team)) user-id) :admin
+      ((set (:authors org)) user-id) :author
+      ((set (:teams user)) team-id) :viewer
       :else false)))
 
 (defn- allow-user [conn auth-conn org-uuid user]
+  (timbre/info "ACCESS LEVEL:" (access-level conn auth-conn org-uuid user))
   (if-let [access-level (access-level conn auth-conn org-uuid user)]
     {:access-level access-level}
     false))
