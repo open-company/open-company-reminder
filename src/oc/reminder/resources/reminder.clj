@@ -276,9 +276,19 @@
                 assignee-reminder (-> reminder
                                     (assoc :assignee assignee)
                                     (assoc :assignee-timezone assignee-tz))
-                authors-reminder (add-author-to-reminder original-reminder assignee-reminder user)]
+                authors-reminder (add-author-to-reminder original-reminder assignee-reminder user)
+                changed-reminder (merge original-reminder reminder)
+                next-send-reminder (if ; the frequency and occurrence settings didn't change
+                                       (= [(:frequency original-reminder)
+                                           (:week-occurrence original-reminder)
+                                           (:period-occurrence original-reminder)]
+                                          [(:frequency changed-reminder)
+                                           (:week-occurrence changed-reminder)
+                                           (:period-occurrence changed-reminder)])
+                                      authors-reminder ; then the next-send doesn't need to change
+                                      (next-reminder-for authors-reminder ts))] ; update the next-send
       (schema/validate Reminder authors-reminder)
-      (db-common/update-resource conn table-name primary-key original-reminder authors-reminder ts))))
+      (db-common/update-resource conn table-name primary-key original-reminder next-send-reminder ts))))
 
 (schema/defn ^:always-validate delete-reminder!
   "Given the UUID of the reminedr, delete the reminder. Return `true` on success."
