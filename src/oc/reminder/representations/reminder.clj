@@ -51,7 +51,7 @@
         full-links (if (or (= access :admin)
                            (and (= access :author)
                                 (or (= user-id (-> reminder :assignee :user-id)) ; the asignee
-                                    ((set (:authors reminder)) user-id)))) ; an author
+                                    ((set (map :user-id (:author reminder))) user-id)))) ; an author
                       (concat links [(partial-update-link reminder) (delete-link reminder)])
                       links)]
     (assoc (render-reminder-for-collection reminder) :links full-links)))
@@ -64,7 +64,7 @@
         full-links (if (or (= access :admin)
                            (and (= access :author)
                                 (or (= user-id (-> reminder :assignee :user-id)) ; the asignee
-                                    ((set (:authors reminder)) user-id)))) ; an author
+                                    ((set (map :user-id (:author reminder))) user-id)))) ; an author
                       (concat links [(partial-update-link reminder) (delete-link reminder)])
                       links)]
   (json/generate-string

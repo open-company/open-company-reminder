@@ -30,7 +30,6 @@
       :else false)))
 
 (defn- allow-user [conn auth-conn org-uuid user]
-  (timbre/info "ACCESS LEVEL:" (access-level conn auth-conn org-uuid user))
   (if-let [access-level (access-level conn auth-conn org-uuid user)]
     {:access-level access-level}
     false))
@@ -49,7 +48,7 @@
               allowed? (or (= level :admin) ; an admin
                            (and (= level :author) ; an author
                                 (or (= user-id (-> reminder :assignee :user-id)) ; the asignee
-                                    ((set (:authors reminder)) user-id))))] ; an author
+                                    ((set (map :user-id (:author reminder))) user-id))))] ; an author
       {:access-level level :existing-reminder reminder}
       false)))
 
