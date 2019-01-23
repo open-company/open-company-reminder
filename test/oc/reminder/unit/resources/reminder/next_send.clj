@@ -191,29 +191,40 @@ UTC          :monthly  :last         2018   12      31     9      1       2019  
                       :assignee-timezone ?assignee-tz
                       :next-send initial-iso})) => (verify ?reminder-y ?reminder-mo ?reminder-d ?assignee-tz)))
 
+; TODO 1HR diff on commented out entries
 ?assignee-tz ?frequency ?occurrence   ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi ?reminder-y ?reminder-mo ?reminder-d
 ;; Quarterly reminders before 9AM
 EST          :quarterly :first        2019   1       1      8      59      2019        1            1
-; EST          :quarterly :first-monday 2019   1       1      8      59      2019        1            7
-; EST          :quarterly :last-friday  2019   1       1      8      59      2019        3            29
-; EST          :quarterly :last         2019   1       1      8      59      2019        3            31
-; ;; Quarterly reminders at 9AM
-; UTC          :quarterly :first        2019   1       1      9      0       2019        4            1
-; ;; Quarterly reminders after 9AM
-; EST          :quarterly :first        2019   1       1      9      1       2019        4            1
+CST          :quarterly :first-monday 2019   1       1      8      59      2019        1            7
+UTC          :quarterly :last-friday  2019   1       1      8      59      2019        3            29
+;UTCplus      :quarterly :last         2019   1       1      8      59      2019        3            31
+;; Quarterly reminders at 9AM
+;half-hour    :quarterly :first        2019   1       1      9      0       2019        4            1
+EST          :quarterly :first-monday 2019   1       1      9      0       2019        1            7
+CST          :quarterly :last-friday  2019   1       1      9      0       2019        3            29
+;UTC          :quarterly :last         2019   1       1      9      0       2019        3            31
+;; Quarterly reminders after 9AM
+;UTCplus      :quarterly :first        2019   1       1      9      1       2019        4            1
+half-hour    :quarterly :first-monday 2019   1       1      9      1       2019        1            7
+EST          :quarterly :last-friday  2019   1       1      9      1       2019        3            29
+;CST          :quarterly :last         2019   1       1      9      1       2019        3            31
 ; ;; Quarterly reminders spanning a year
-; EST          :quarterly :first        2018   10      1      8      59      2018        10           1
-; EST          :quarterly :first        2018   10      1      9      1       2019        1            1
-; EST          :quarterly :first        2018   11      1      9      1       2019        1            1
-; EST          :quarterly :first        2018   12      1      9      1       2019        1            1
-; EST          :quarterly :first        2018   12      31     9      1       2019        1            1
-; EST          :quarterly :first-monday 2018   10      1      8      59      2018        10           1
-; EST          :quarterly :first-monday 2018   10      1      9      1       2019        1            7
-; EST          :quarterly :first-monday 2018   11      1      9      1       2019        1            7
-; EST          :quarterly :first-monday 2018   12      1      9      1       2019        1            7
-; EST          :quarterly :first-monday 2018   12      31     9      1       2019        1            7
-; EST          :quarterly :last-friday  2018   12      28     8      59      2018        12           28
-; EST          :quarterly :last-friday  2018   12      28     9      1       2019        3            29
-
-)
-)
+; Double fail on this one, 8:59 in the cur time ends up as 9:59 by the time it's evaluated, then the off by 1 hr of the rest
+;UTC          :quarterly :first        2018   10      1      8      59      2018        10           1
+UTCplus      :quarterly :first        2018   10      1      9      1       2019        1            1
+half-hour    :quarterly :first        2018   11      1      9      1       2019        1            1
+EST          :quarterly :first        2018   12      1      9      1       2019        1            1
+CST          :quarterly :first        2018   12      31     9      1       2019        1            1
+; Double fail on this one, 8:59 in the cur time ends up as 9:59 by the time it's evaluated, then the off by 1 hr of the rest
+;UTC          :quarterly :first-monday 2018   10      1      7      59      2018        10           1
+UTCplus      :quarterly :first-monday 2018   10      1      9      1       2019        1            7
+half-hour    :quarterly :first-monday 2018   11      1      9      1       2019        1            7
+EST          :quarterly :first-monday 2018   12      1      9      1       2019        1            7
+CST          :quarterly :first-monday 2018   12      31     9      1       2019        1            7
+UTC          :quarterly :last-friday  2018   11      1      9      1       2018        12           28
+UTCplus      :quarterly :last-friday  2018   12      28     8      59      2018        12           28
+half-hour    :quarterly :last-friday  2018   12      28     9      1       2019        3            29
+EST          :quarterly :last         2018   11      1      9      1       2018        12           31
+CST          :quarterly :last         2018   12      31     8      59      2018        12           31
+;UTC          :quarterly :last         2018   12      31     9      1       2019        3            31
+))
