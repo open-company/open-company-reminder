@@ -1,7 +1,7 @@
 (ns oc.reminder.resources.reminder
   (:require [clojure.walk :refer (keywordize-keys)]
             [if-let.core :refer (when-let*)]
-            [defun.core :refer (defun-)]
+            [defun.core :refer (defun)]
             [schema.core :as schema]
             [clj-time.format :as f]
             [java-time :as jt]
@@ -129,7 +129,7 @@
       ;; it was in the past (or now), or the wrong month for the quarter, so try again
       (adjust-for frequency adjuster orig-ts (adjuster a-send) occurrence)))))
 
-(defun- next-reminder-for
+(defun next-reminder-for
   "
   Pattern matching function that takes a reminder and updates the `:next-send` of the reminder based
   on the frequency and `:week-occurrence` or `:period-occurrence` of the reminder.
