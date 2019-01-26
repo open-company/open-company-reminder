@@ -30,6 +30,8 @@
 
 ;; ----- Date / Time hell -----
 
+(def reminder-time (jt/local-time 9)) ; 9AM local to the user in their time zone
+
 (def start-of-quarters #{1 4 7 10}) ; Months that begin a quarter
 (def end-of-quarters #{3 6 9 12}) ; Months that end a quarter
 
@@ -43,6 +45,13 @@
   "Remove any reserved properties from the reminder."
   [reminder]
   (apply dissoc reminder reserved-properties))
+
+(defn add-day
+  ([ts] (add-day ts 1))
+  ([ts number]
+  (-> ts
+    (jt/plus (jt/days number))
+    (jt/adjust reminder-time))))
 
 (defn- add-author-to-reminder
   "
@@ -68,7 +77,7 @@
   ([ts] (first-day-of-next-month ts ts))
   ([orig-ts updated-ts]
   (if (= (jt/as orig-ts :month-of-year) (jt/as updated-ts :month-of-year)) ; still the same month
-    (first-day-of-next-month orig-ts (jt/plus updated-ts (jt/days 1)))
+    (first-day-of-next-month orig-ts (add-day updated-ts))
     updated-ts))) ; got to the next month
 
 (defn- first-month-of-next-quarter
@@ -77,7 +86,7 @@
   ([orig-ts updated-ts]
   (if (or (= (jt/as orig-ts :month-of-year) (jt/as updated-ts :month-of-year)) ; still the same month
           (not (start-of-quarters (jt/as updated-ts :month-of-year)))) ; not a month that starts a quarter
-    (first-month-of-next-quarter orig-ts (jt/plus updated-ts (jt/days 1)))
+    (first-month-of-next-quarter orig-ts (add-day updated-ts))
     updated-ts)))
 
 (defn- last-month-of-the-quarter
@@ -86,7 +95,7 @@
   ([orig-ts updated-ts]
   (if (or (= (jt/as orig-ts :month-of-year) (jt/as updated-ts :month-of-year)) ; still the same month
           (not (end-of-quarters (jt/as updated-ts :month-of-year)))) ; not a month that ends a quarter
-    (last-month-of-the-quarter orig-ts (jt/plus updated-ts (jt/days 1)))
+    (last-month-of-the-quarter orig-ts (add-day updated-ts))
     updated-ts)))
 
 (defn- adjust-for
@@ -103,7 +112,7 @@
                       :last :last-day-of-month)
         a-send (-> local-ts
                     (adjust-day-of-month adjustment) ; the right day for the reminder
-                    (jt/adjust (jt/local-time 9)))] ; 9AM on the reminder day, local to the user
+                    (jt/adjust reminder-time))] ; time of the reminder, local to the user
     (if (and ; ALL of these must be true to use the adjusted time as-is, with no further adjustment
              ; it's in the future
              (jt/after? a-send orig-ts) 
@@ -138,10 +147,10 @@
         occurrence (keyword (:week-occurrence reminder))
         a-send (-> local-ts
                     (jt/adjust :next-or-same-day-of-week occurrence)
-                    (jt/adjust (jt/local-time 9)))
+                    (jt/adjust reminder-time))
         b-send (if (jt/after? a-send local-ts)
                   a-send ; it's in the future
-                  (jt/adjust a-send jt/plus (jt/days 7))) ; it was in the past (or now)
+                  (add-day a-send 7)) ; it was in the past (or now)
         next-send (jt/with-zone-same-instant b-send UTC)]
     (assoc reminder :next-send (jt/format iso-format next-send))))
 
@@ -152,11 +161,11 @@
         occurrence (keyword (:week-occurrence reminder))
         a-send (-> local-ts
                     (jt/adjust :next-or-same-day-of-week occurrence)
-                    (jt/adjust (jt/local-time 9)))
+                    (jt/adjust reminder-time))
         b-send (if (jt/after? a-send local-ts)
                   a-send ; it's in the future
-                  (jt/adjust a-send jt/plus (jt/days 7))) ; it was in the past (or now)
-        c-send (jt/adjust b-send jt/plus (jt/days 7)) ; an extra week for bi-weekly
+                  (add-day a-send 7)) ; it was in the past (or now)
+        c-send (add-day b-send 7) ; an extra week for bi-weekly
         next-send (jt/with-zone-same-instant c-send UTC)]
     (assoc reminder :next-send (jt/format iso-format next-send))))
 

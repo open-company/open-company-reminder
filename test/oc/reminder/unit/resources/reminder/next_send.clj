@@ -17,6 +17,17 @@
   (jt/format reminder/iso-format 
     (jt/with-zone-same-instant (jt/with-zone (jt/zoned-date-time y m d 9 0 0) tz) UTC)))
 
+(defn- reminder-for [cur-y cur-mo cur-d cur-h cur-mi frequency occurrence assignee-tz]
+  (let [initial-local (jt/with-zone (jt/zoned-date-time cur-y cur-mo cur-d cur-h cur-mi) assignee-tz)
+        initial-utc (jt/with-zone-same-instant initial-local UTC)
+        initial-iso (jt/format reminder/iso-format initial-utc)]
+    (#'reminder/next-reminder-for {
+      :frequency frequency
+      :week-occurrence occurrence
+      :period-occurrence occurrence
+      :assignee-timezone assignee-tz
+      :next-send initial-iso})))
+
 ;; ----- Tests -----
 
 (facts "About time for next reminder"
@@ -24,15 +35,8 @@
   (tabular
     (facts "About weekly reminders"
   
-      (let [initial-local (jt/with-zone 
-                            (jt/zoned-date-time ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi) ?assignee-tz)
-            initial-utc (jt/with-zone-same-instant initial-local UTC)
-            initial-iso (jt/format reminder/iso-format initial-utc)]
-        (:next-send (#'reminder/next-reminder-for {
-                      :frequency ?frequency
-                      :week-occurrence ?occurrence
-                      :assignee-timezone ?assignee-tz
-                      :next-send initial-iso})) => (verify ?reminder-y ?reminder-mo ?reminder-d ?assignee-tz)))
+      (:next-send (reminder-for ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi ?frequency ?occurrence ?assignee-tz)) =>
+        (verify ?reminder-y ?reminder-mo ?reminder-d ?assignee-tz))
 
 ?assignee-tz ?frequency ?occurrence  ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi ?reminder-y ?reminder-mo ?reminder-d
 ;; Weekly reminders before 9AM
@@ -81,15 +85,8 @@ CST          :weekly    :sunday      2018   12      31     9      1       2019  
   (tabular
     (facts "About bi-weekly reminders"
   
-      (let [initial-local (jt/with-zone 
-                            (jt/zoned-date-time ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi) ?assignee-tz)
-            initial-utc (jt/with-zone-same-instant initial-local UTC)
-            initial-iso (jt/format reminder/iso-format initial-utc)]
-        (:next-send (#'reminder/next-reminder-for {
-                      :frequency ?frequency
-                      :week-occurrence ?occurrence
-                      :assignee-timezone ?assignee-tz
-                      :next-send initial-iso})) => (verify ?reminder-y ?reminder-mo ?reminder-d ?assignee-tz)))
+      (:next-send (reminder-for ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi ?frequency ?occurrence ?assignee-tz)) =>
+        (verify ?reminder-y ?reminder-mo ?reminder-d ?assignee-tz))
 
 ?assignee-tz ?frequency ?occurrence  ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi ?reminder-y ?reminder-mo ?reminder-d
 ;; Biweekly reminders before 9AM
@@ -138,15 +135,8 @@ CST          :biweekly  :sunday      2018   12      31     9      1       2019  
   (tabular
     (facts "About monthly reminders"
   
-      (let [initial-local (jt/with-zone 
-                            (jt/zoned-date-time ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi) ?assignee-tz)
-            initial-utc (jt/with-zone-same-instant initial-local UTC)
-            initial-iso (jt/format reminder/iso-format initial-utc)]
-        (:next-send (#'reminder/next-reminder-for {
-                      :frequency ?frequency
-                      :period-occurrence ?occurrence
-                      :assignee-timezone ?assignee-tz
-                      :next-send initial-iso})) => (verify ?reminder-y ?reminder-mo ?reminder-d ?assignee-tz)))
+      (:next-send (reminder-for ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi ?frequency ?occurrence ?assignee-tz)) =>
+        (verify ?reminder-y ?reminder-mo ?reminder-d ?assignee-tz))
 
 ?assignee-tz ?frequency ?occurrence  ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi ?reminder-y ?reminder-mo ?reminder-d
 ;; Monthly reminders before 9AM
@@ -181,23 +171,16 @@ UTC          :monthly  :last         2018   12      31     9      1       2019  
   (tabular
     (facts "About quarterly reminders"
   
-      (let [initial-local (jt/with-zone 
-                            (jt/zoned-date-time ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi) ?assignee-tz)
-            initial-utc (jt/with-zone-same-instant initial-local UTC)
-            initial-iso (jt/format reminder/iso-format initial-utc)]
-        (:next-send (#'reminder/next-reminder-for {
-                      :frequency ?frequency
-                      :period-occurrence ?occurrence
-                      :assignee-timezone ?assignee-tz
-                      :next-send initial-iso})) => (verify ?reminder-y ?reminder-mo ?reminder-d ?assignee-tz)))
+        (:next-send (reminder-for ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi ?frequency ?occurrence ?assignee-tz)) =>
+        (verify ?reminder-y ?reminder-mo ?reminder-d ?assignee-tz))
 
-; TODO 1HR diff on commented out entries
+; TODO 1HR diff on commented out entries as we cross daylight savings
 ?assignee-tz ?frequency ?occurrence   ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi ?reminder-y ?reminder-mo ?reminder-d
 ;; Quarterly reminders before 9AM
 EST          :quarterly :first        2019   1       1      8      59      2019        1            1
 CST          :quarterly :first-monday 2019   1       1      8      59      2019        1            7
 UTC          :quarterly :last-friday  2019   1       1      8      59      2019        3            29
-;UTCplus      :quarterly :last         2019   1       1      8      59      2019        3            31
+;UTCplus          :quarterly :last         2019   1       1      8      59      2019        3            31
 ;; Quarterly reminders at 9AM
 ;half-hour    :quarterly :first        2019   1       1      9      0       2019        4            1
 EST          :quarterly :first-monday 2019   1       1      9      0       2019        1            7
