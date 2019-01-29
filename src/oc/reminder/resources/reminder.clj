@@ -1,7 +1,7 @@
 (ns oc.reminder.resources.reminder
   (:require [clojure.walk :refer (keywordize-keys)]
             [if-let.core :refer (when-let*)]
-            [defun.core :refer (defun)]
+            [defun.core :refer (defun defun-)]
             [schema.core :as schema]
             [clj-time.format :as f]
             [java-time :as jt]
