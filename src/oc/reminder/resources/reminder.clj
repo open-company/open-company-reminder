@@ -39,6 +39,8 @@
 (def joda-iso-format (f/formatters :date-time)) ; ISO 8601 (Joda)
 (def UTC "UTC")
 
+(def default-timezone "America/New_York")
+
 ;; ----- Utility functions -----
 
 (defn clean
@@ -229,7 +231,7 @@
               author (user-res/author-for user)
               assignee-user (user-res/get-user auth-conn (-> reminder-props :assignee :user-id))
               assignee (user-res/author-for assignee-user)
-              assignee-tz (:timezone assignee-user)]
+              assignee-tz (or (:timezone assignee-user) default-timezone)]
     (-> reminder-props
         keywordize-keys
         clean
