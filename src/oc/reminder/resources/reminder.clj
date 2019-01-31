@@ -269,14 +269,25 @@
 
 (schema/defn ^:always-validate update-reminder! :- (schema/maybe Reminder)
   "
-  Given the UUID of the reminder, an updated reminder property map, and a user (as the author), update the reminder and
-  return the updated reminder on success.
+  Given the UUID of the reminder, an updated reminder property map, and a user (as the author),
+  update the reminder and return the updated reminder on success.
 
-  Throws an exception if the merge of the prior reminder and the updated reminder property map doesn't conform
+  Alternatively, given the UUID of the reminder, and a tick timestamp, update the reminder with
+  a new `next-send` timestamp and return the updated reminder on success.
+
+  Throws an exception if the merge of the prior reminder and the updated reminder properties doesn't conform
   to the Reminder schema.
   "
-  [conn auth-conn uuid :- lib-schema/UniqueID reminder user :- lib-schema/User]
-  {:pre [(db-common/conn? conn)         
+  ([conn uuid :- lib-schema/UniqueID ts :- lib-schema/ISO8601]
+  {:pre [(db-common/conn? conn)]}
+  (when-let* [original-reminder (get-reminder conn uuid)
+              next-send-reminder (next-reminder-for original-reminder ts)]
+    (schema/validate Reminder next-send-reminder)
+    (db-common/update-resource conn table-name primary-key original-reminder next-send-reminder ts)))
+
+  ([conn auth-conn uuid :- lib-schema/UniqueID reminder user :- lib-schema/User]
+  {:pre [(db-common/conn? conn)
+         (db-common/conn? auth-conn)
          (map? reminder)]}
   (when-let [original-reminder (get-reminder conn uuid)]
     (when-let* [ts (db-common/current-timestamp)
@@ -300,7 +311,7 @@
                                       authors-reminder ; then the next-send doesn't need to change
                                       (next-reminder-for authors-reminder ts))] ; otherwise, update the next-send
       (schema/validate Reminder authors-reminder)
-      (db-common/update-resource conn table-name primary-key original-reminder next-send-reminder ts))))
+      (db-common/update-resource conn table-name primary-key original-reminder next-send-reminder ts)))))
 
 (schema/defn ^:always-validate delete-reminder!
   "Given the UUID of the reminedr, delete the reminder. Return `true` on success."
@@ -313,6 +324,10 @@
 (schema/defn ^:always-validate list-reminders [conn org-uuid :- lib-schema/UniqueID]
   {:pre [(db-common/conn? conn)]}
   (db-common/read-resources conn table-name "org-uuid" org-uuid))
+
+(schema/defn ^:always-validate due-reminders [conn ts :- lib-schema/ISO8601]
+  {:pre [(db-common/conn? conn)]}
+  (db-common/filter-resources conn table-name [{:fn :le :field "next-send" :value ts}]))
 
 ;; ----- Armageddon -----
 

@@ -17,11 +17,9 @@
 
 ;; ----- Data Schema -----
 
-(defn- notification-type? [notification-type] (#{:add :update} notification-type))
-
 (def NotificationTrigger
   {
-    :notification-type (schema/pred notification-type?)
+    :notification-type (schema/enum :add :update)
     :resource-type (schema/enum :reminder)
     :org {
       :slug lib-schema/NonBlankStr
@@ -32,6 +30,7 @@
       (schema/optional-key :logo-height) schema/Int
     }
     :reminder {
+      :notification-type (schema/enum :reminder-alert :reminder-notification)
       :headline lib-schema/NonBlankStr
       :frequency reminder-res/Frequency
       (schema/optional-key :week-occurrence) reminder-res/WeekOccurrence
@@ -45,7 +44,7 @@
 
 (defn- handle-notification-message
   [trigger]
-  (timbre/debug "Notification request of tye:" (:notification-type trigger))
+  (timbre/debug "Notification request of type:" (:notification-type trigger))
   (timbre/trace "Notification request:" trigger)
   (schema/validate NotificationTrigger trigger)
   (timbre/info "Sending request to queue:" config/aws-sqs-notify-queue)
@@ -88,13 +87,15 @@
                   :logo-width (:logo-width org)
                   :logo-height (:logo-height org)}}
       {:reminder (-> (select-keys reminder [:headline :frequency :assignee :next-send :updated-at])
+                     (assoc :notification-type :reminder-notification) ; the default
                      (assoc :author (dissoc (last (:author reminder)) :updated-at))
                      (assoc occurrence-key (occurrence-key reminder)))})))
 
 (schema/defn ^:always-validate send-trigger! 
 
   ([trigger :- NotificationTrigger]
-  (if (= (-> trigger :reminder :assignee :user-id) (-> trigger :reminder :author :user-id))
+  (if (and (not= (-> trigger :reminder :notification-type) :reminder-alert)
+           (= (-> trigger :reminder :assignee :user-id) (-> trigger :reminder :author :user-id)))
     (timbre/debug "Skipping notification (self-reminder) for:" trigger)
     (do
       (timbre/debug "Triggering a notification for:" trigger)

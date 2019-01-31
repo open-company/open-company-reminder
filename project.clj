@@ -14,7 +14,7 @@
   :dependencies [
     ;; Lisp on the JVM http://clojure.org/documentation
     [org.clojure/clojure "1.10.0"]
-    [http-kit "2.4.0-alpha2"] ; Web client/server http://http-kit.org/
+    [http-kit "2.4.0-alpha3"] ; Web client/server http://http-kit.org/
     ;; Web application library https://github.com/ring-clojure/ring
     [ring/ring-devel "1.7.1"]
     ;; Web application library https://github.com/ring-clojure/ring
@@ -37,7 +37,7 @@
     [clojure.java-time "0.3.2"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
-    [open-company/lib "0.16.33"]
+    [open-company/lib "0.16.34-alpha1"]
     ;; In addition to common functions, brings in the following common dependencies used by this project:
     ;; defun - Erlang-esque pattern matching for Clojure functions https://github.com/killme2008/defun
     ;; if-let - More than one binding for if/when macros https://github.com/LockedOn/if-let
@@ -71,13 +71,13 @@
         ;; NB: clj-time is pulled in by oc.lib
         ;; NB: joda-time is pulled in by oc.lib via clj-time
         ;; NB: commons-codec pulled in by oc.lib
-        [midje "1.9.5" :exclusions [joda-time clj-time commons-codec]] 
+        [midje "1.9.6" :exclusions [joda-time clj-time commons-codec]] 
       ]
       :plugins [
         ;; Example-based testing https://github.com/marick/lein-midje
         [lein-midje "3.2.1"]
         ;; Linter https://github.com/jonase/eastwood
-        [jonase/eastwood "0.3.4"]
+        [jonase/eastwood "0.3.5"]
         ;; Static code search for non-idiomatic code https://github.com/jonase/kibit
         [lein-kibit "0.1.6" :exclusions [org.clojure/clojure]]
       ]
