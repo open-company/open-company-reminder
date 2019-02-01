@@ -321,6 +321,10 @@
 
 ;; ----- Collection of reminders -----
 
+(schema/defn ^:always-validate list-all-reminders [conn]
+  {:pre [(db-common/conn? conn)]}
+  (db-common/read-resources conn table-name))
+
 (schema/defn ^:always-validate list-reminders [conn org-uuid :- lib-schema/UniqueID]
   {:pre [(db-common/conn? conn)]}
   (db-common/read-resources conn table-name "org-uuid" org-uuid))
