@@ -291,14 +291,14 @@
          (map? reminder)]}
   (when-let [original-reminder (get-reminder conn uuid)]
     (when-let* [ts (db-common/current-timestamp)
-                assignee-user (user-res/get-user auth-conn (-> reminder :assignee :user-id))
+                changed-reminder (merge original-reminder reminder)
+                assignee-user (user-res/get-user auth-conn (-> changed-reminder :assignee :user-id))
                 assignee (user-res/author-for assignee-user)
                 assignee-tz (:timezone assignee-user)
-                assignee-reminder (-> reminder
+                assignee-reminder (-> changed-reminder
                                     (assoc :assignee assignee)
                                     (assoc :assignee-timezone assignee-tz))
                 authors-reminder (add-author-to-reminder original-reminder assignee-reminder user)
-                changed-reminder (merge original-reminder reminder)
                 next-send-reminder (if ; the assignee timzone, frequency and occurrence settings didn't change
                                        (= [(:assignee-timezone original-reminder)
                                            (:frequency original-reminder)
