@@ -9,6 +9,6 @@
   (println "Creating table: " reminder/table-name)
   (println (m/create-table conn c/db-name reminder/table-name reminder/primary-key))
   (println (m/create-index conn reminder/table-name "org-uuid"))
-  (println (m/create-index conn reminder/table-name "next-date"))
+  (println (m/create-index conn reminder/table-name "next-send"))
 
   true) ; return true on success

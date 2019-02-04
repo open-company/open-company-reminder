@@ -1,5 +1,6 @@
 (ns oc.reminder.unit.resources.reminder.next-send
-  (:require [midje.sweet :refer :all]
+  (:require [defun.core :refer (defun-)]
+            [midje.sweet :refer :all]
             [java-time :as jt]
             [oc.reminder.resources.reminder :as reminder]))
 
@@ -15,24 +16,38 @@
 
 (defn- verify [y m d tz]
   (jt/format reminder/iso-format 
-    (jt/with-zone-same-instant (jt/with-zone (jt/zoned-date-time y m d 9 0 0) tz) UTC)))
+    (jt/with-zone-same-instant (jt/with-zone (jt/zoned-date-time y m d 9 0 0) tz) "UTC")))
+
+(defn- reminder-for [cur-y cur-mo cur-d cur-h cur-mi frequency occurrence assignee-tz]
+  (let [initial-local (jt/with-zone (jt/zoned-date-time cur-y cur-mo cur-d cur-h cur-mi) assignee-tz)
+        initial-utc (jt/with-zone-same-instant initial-local UTC)
+        initial-iso (jt/format reminder/iso-format initial-utc)]
+    (#'reminder/next-reminder-for {
+      :frequency frequency
+      :week-occurrence occurrence
+      :period-occurrence occurrence
+      :assignee-timezone assignee-tz
+      :next-send initial-iso})))
+
+(defun- reminder-chain-for
+  ([n cur-y cur-mo cur-d cur-h cur-mi frequency occurrence assignee-tz]
+  (reminder-chain-for (reminder-for cur-y cur-mo cur-d cur-h cur-mi frequency occurrence assignee-tz) (dec n)))
+  
+  ([reminder 0] reminder)
+
+  ([reminder n] (reminder-chain-for (reminder/next-reminder-for reminder) (dec n))))
 
 ;; ----- Tests -----
 
-(facts "About time for next reminder"
+(facts "About reminder date/time calculations"
 
-  (tabular
-    (facts "About weekly reminders"
-  
-      (let [initial-local (jt/with-zone 
-                            (jt/zoned-date-time ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi) ?assignee-tz)
-            initial-utc (jt/with-zone-same-instant initial-local UTC)
-            initial-iso (jt/format reminder/iso-format initial-utc)]
-        (:next-send (#'reminder/next-reminder-for {
-                      :frequency ?frequency
-                      :week-occurrence ?occurrence
-                      :assignee-timezone ?assignee-tz
-                      :next-send initial-iso})) => (verify ?reminder-y ?reminder-mo ?reminder-d ?assignee-tz)))
+  (facts "About time for next reminder"
+
+    (tabular
+      (facts "About weekly reminders"
+    
+        (:next-send (reminder-for ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi ?frequency ?occurrence ?assignee-tz)) =>
+          (verify ?reminder-y ?reminder-mo ?reminder-d ?assignee-tz))
 
 ?assignee-tz ?frequency ?occurrence  ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi ?reminder-y ?reminder-mo ?reminder-d
 ;; Weekly reminders before 9AM
@@ -81,15 +96,8 @@ CST          :weekly    :sunday      2018   12      31     9      1       2019  
   (tabular
     (facts "About bi-weekly reminders"
   
-      (let [initial-local (jt/with-zone 
-                            (jt/zoned-date-time ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi) ?assignee-tz)
-            initial-utc (jt/with-zone-same-instant initial-local UTC)
-            initial-iso (jt/format reminder/iso-format initial-utc)]
-        (:next-send (#'reminder/next-reminder-for {
-                      :frequency ?frequency
-                      :week-occurrence ?occurrence
-                      :assignee-timezone ?assignee-tz
-                      :next-send initial-iso})) => (verify ?reminder-y ?reminder-mo ?reminder-d ?assignee-tz)))
+      (:next-send (reminder-for ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi ?frequency ?occurrence ?assignee-tz)) =>
+        (verify ?reminder-y ?reminder-mo ?reminder-d ?assignee-tz))
 
 ?assignee-tz ?frequency ?occurrence  ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi ?reminder-y ?reminder-mo ?reminder-d
 ;; Biweekly reminders before 9AM
@@ -138,15 +146,8 @@ CST          :biweekly  :sunday      2018   12      31     9      1       2019  
   (tabular
     (facts "About monthly reminders"
   
-      (let [initial-local (jt/with-zone 
-                            (jt/zoned-date-time ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi) ?assignee-tz)
-            initial-utc (jt/with-zone-same-instant initial-local UTC)
-            initial-iso (jt/format reminder/iso-format initial-utc)]
-        (:next-send (#'reminder/next-reminder-for {
-                      :frequency ?frequency
-                      :period-occurrence ?occurrence
-                      :assignee-timezone ?assignee-tz
-                      :next-send initial-iso})) => (verify ?reminder-y ?reminder-mo ?reminder-d ?assignee-tz)))
+      (:next-send (reminder-for ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi ?frequency ?occurrence ?assignee-tz)) =>
+        (verify ?reminder-y ?reminder-mo ?reminder-d ?assignee-tz))
 
 ?assignee-tz ?frequency ?occurrence  ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi ?reminder-y ?reminder-mo ?reminder-d
 ;; Monthly reminders before 9AM
@@ -181,42 +182,32 @@ UTC          :monthly  :last         2018   12      31     9      1       2019  
   (tabular
     (facts "About quarterly reminders"
   
-      (let [initial-local (jt/with-zone 
-                            (jt/zoned-date-time ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi) ?assignee-tz)
-            initial-utc (jt/with-zone-same-instant initial-local UTC)
-            initial-iso (jt/format reminder/iso-format initial-utc)]
-        (:next-send (#'reminder/next-reminder-for {
-                      :frequency ?frequency
-                      :period-occurrence ?occurrence
-                      :assignee-timezone ?assignee-tz
-                      :next-send initial-iso})) => (verify ?reminder-y ?reminder-mo ?reminder-d ?assignee-tz)))
+        (:next-send (reminder-for ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi ?frequency ?occurrence ?assignee-tz)) =>
+        (verify ?reminder-y ?reminder-mo ?reminder-d ?assignee-tz))
 
-; TODO 1HR diff on commented out entries
 ?assignee-tz ?frequency ?occurrence   ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi ?reminder-y ?reminder-mo ?reminder-d
 ;; Quarterly reminders before 9AM
 EST          :quarterly :first        2019   1       1      8      59      2019        1            1
 CST          :quarterly :first-monday 2019   1       1      8      59      2019        1            7
 UTC          :quarterly :last-friday  2019   1       1      8      59      2019        3            29
-;UTCplus      :quarterly :last         2019   1       1      8      59      2019        3            31
+UTCplus      :quarterly :last         2019   1       1      8      59      2019        3            31
 ;; Quarterly reminders at 9AM
-;half-hour    :quarterly :first        2019   1       1      9      0       2019        4            1
+half-hour    :quarterly :first        2019   1       1      9      0       2019        4            1
 EST          :quarterly :first-monday 2019   1       1      9      0       2019        1            7
 CST          :quarterly :last-friday  2019   1       1      9      0       2019        3            29
-;UTC          :quarterly :last         2019   1       1      9      0       2019        3            31
+UTC          :quarterly :last         2019   1       1      9      0       2019        3            31
 ;; Quarterly reminders after 9AM
-;UTCplus      :quarterly :first        2019   1       1      9      1       2019        4            1
+UTCplus      :quarterly :first        2019   1       1      9      1       2019        4            1
 half-hour    :quarterly :first-monday 2019   1       1      9      1       2019        1            7
 EST          :quarterly :last-friday  2019   1       1      9      1       2019        3            29
-;CST          :quarterly :last         2019   1       1      9      1       2019        3            31
-; ;; Quarterly reminders spanning a year
-; Double fail on this one, 8:59 in the cur time ends up as 9:59 by the time it's evaluated, then the off by 1 hr of the rest
-;UTC          :quarterly :first        2018   10      1      8      59      2018        10           1
+CST          :quarterly :last         2019   1       1      9      1       2019        3            31
+;; Quarterly reminders spanning a year
+UTC          :quarterly :first        2018   10      1      7      59      2018        10           1
 UTCplus      :quarterly :first        2018   10      1      9      1       2019        1            1
 half-hour    :quarterly :first        2018   11      1      9      1       2019        1            1
 EST          :quarterly :first        2018   12      1      9      1       2019        1            1
 CST          :quarterly :first        2018   12      31     9      1       2019        1            1
-; Double fail on this one, 8:59 in the cur time ends up as 9:59 by the time it's evaluated, then the off by 1 hr of the rest
-;UTC          :quarterly :first-monday 2018   10      1      7      59      2018        10           1
+UTC          :quarterly :first-monday 2018   10      1      7      59      2018        10           1
 UTCplus      :quarterly :first-monday 2018   10      1      9      1       2019        1            7
 half-hour    :quarterly :first-monday 2018   11      1      9      1       2019        1            7
 EST          :quarterly :first-monday 2018   12      1      9      1       2019        1            7
@@ -226,5 +217,39 @@ UTCplus      :quarterly :last-friday  2018   12      28     8      59      2018 
 half-hour    :quarterly :last-friday  2018   12      28     9      1       2019        3            29
 EST          :quarterly :last         2018   11      1      9      1       2018        12           31
 CST          :quarterly :last         2018   12      31     8      59      2018        12           31
-;UTC          :quarterly :last         2018   12      31     9      1       2019        3            31
-))
+UTC          :quarterly :last         2018   12      31     9      1       2019        3            31))
+
+  (facts "About chains of subsequent reminders"
+
+    (tabular
+      (facts "About chains of reminders"
+    
+        (:next-send
+          (reminder-chain-for ?chain ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi ?frequency ?occurrence ?assignee-tz)) =>
+          (verify ?reminder-y ?reminder-mo ?reminder-d ?assignee-tz))
+
+?chain ?assignee-tz ?frequency ?occurrence   ?cur-y ?cur-mo ?cur-d ?cur-h ?cur-mi ?reminder-y ?reminder-mo ?reminder-d
+;; Weekly reminders
+2      EST          :weekly    :monday       2019   1       1      8      59      2019        1            14
+3      CST          :weekly    :tuesday      2019   1       1      8      59      2019        1            15
+4      UTC          :weekly    :tuesday      2019   1       1      9      0       2019        1            29
+4      UTCplus      :weekly    :wednesday    2019   1       1      9      1       2019        1            23
+5      half-hour    :weekly    :thursday     2019   1       1      9      1       2019        1            31
+;; Biweekly reminders
+2      EST          :biweekly  :monday       2019   1       1      8      59      2019        1            28
+3      CST          :biweekly  :tuesday      2019   1       1      8      59      2019        2            5
+4      UTC          :biweekly  :tuesday      2019   1       1      9      0       2019        2            26
+4      UTCplus      :biweekly  :wednesday    2019   1       1      9      1       2019        2            20
+5      half-hour    :biweekly  :thursday     2019   1       1      9      1       2019        3            7
+;; Monthly reminders
+2      EST          :monthly   :first        2019   1       1      8      59      2019        2            1
+3      CST          :monthly   :first        2019   1       1      9      0       2019        4            1
+4      UTC          :monthly   :first-monday 2019   1       1      9      1       2019        4            1
+4      UTCplus      :monthly   :last-friday  2019   1       1      9      1       2019        4            26
+5      half-hour    :monthly   :last         2019   1       1      9      1       2019        5            31
+;; Quarterly reminders
+2      EST          :quarterly :first        2019   1       1      8      59      2019        4            1
+3      CST          :quarterly :first        2019   1       1      9      0       2019        10           1
+4      UTC          :quarterly :first-monday 2019   1       1      9      1       2019        10           7
+4      UTCplus      :quarterly :last-friday  2019   1       1      9      1       2019        12           27
+5      half-hour    :quarterly :last         2019   1       1      9      1       2020        3            31)))
