@@ -1,6 +1,8 @@
 (ns oc.reminder.config
   "Namespace for the configuration parameters."
-  (:require [environ.core :refer (env)]))
+  (:require [environ.core :refer (env)]
+            [java-time :as jt]
+            [tick.core :as tick]))
 
 (defn- bool
   "Handle the fact that we may have true/false strings, when we want booleans."
@@ -67,3 +69,9 @@
 ;; ----- JWT -----
 
 (defonce passphrase (env :open-company-auth-passphrase))
+
+;; ----- Schedule -----
+
+(defonce schedule-period (keyword (or (env :schedule-period ) "hours")))
+(defonce schedule-fn (if (= schedule-period :minutes) jt/minutes jt/hours))
+(defonce schedule-tick (if (= schedule-period :minutes) tick/minutes tick/hours))

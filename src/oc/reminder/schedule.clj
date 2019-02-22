@@ -9,12 +9,12 @@
   "
   (:require [taoensso.timbre :as timbre]
             [java-time :as jt]
-            [tick.core :as tick]
             [tick.timeline :as timeline]
             [tick.clock :as clock]
             [tick.schedule :as schedule]
             [oc.lib.db.pool :as pool]
             [oc.lib.db.common :as db-common]
+            [oc.reminder.config :as c]
             [oc.reminder.resources.reminder :as reminder-res]
             [oc.reminder.async.notification :as notification])
   (:gen-class))
@@ -64,20 +64,21 @@
 
 ;; ----- Scheduler Component -----
 
-(defn- top-of-the-hour [] (jt/plus (jt/truncate-to (jt/zoned-date-time) :hours) (jt/hours 1)))
+(defn- top-of-the-period [] (jt/plus (jt/truncate-to (jt/zoned-date-time) c/schedule-period) (c/schedule-fn 1)))
 
-(def hourly-timeline (timeline/timeline (timeline/periodic-seq (top-of-the-hour) (tick/hours 1)))) ; every hour
+(def period-timeline
+  (timeline/timeline (timeline/periodic-seq (top-of-the-period) (c/schedule-tick 1)))) ; every 1 period
 
-(def hourly-schedule (schedule/schedule on-tick hourly-timeline))
+(def period-schedule (schedule/schedule on-tick period-timeline))
 
 (defn start [pool]
 
   (reset! db-pool pool) ; hold onto the DB pool reference
 
   (timbre/info "Starting reminder schedule...")
-  (timbre/info "First run set for:" (top-of-the-hour))
-  (reset! reminder-schedule hourly-schedule)
-  (schedule/start hourly-schedule (clock/clock-ticking-in-seconds)))
+  (timbre/info "First run set for:" (top-of-the-period))
+  (reset! reminder-schedule period-schedule)
+  (schedule/start period-schedule (clock/clock-ticking-in-seconds)))
 
 (defn stop []
 
