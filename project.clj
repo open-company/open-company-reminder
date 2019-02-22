@@ -37,7 +37,7 @@
     [clojure.java-time "0.3.2"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
-    [open-company/lib "0.16.36"]
+    [open-company/lib "0.16.37"]
     ;; In addition to common functions, brings in the following common dependencies used by this project:
     ;; defun - Erlang-esque pattern matching for Clojure functions https://github.com/killme2008/defun
     ;; if-let - More than one binding for if/when macros https://github.com/LockedOn/if-let
@@ -54,7 +54,7 @@
   ]
 
   :plugins [
-    [lein-ring "0.12.4"]
+    [lein-ring "0.12.5"]
     [lein-environ "1.1.0"] ; Get environment settings from different sources https://github.com/weavejester/environ
   ]
 
@@ -95,6 +95,7 @@
         :aws-sqs-notify-queue "CHANGE-ME"
         :liberator-trace "true"
         :log-level "debug"
+        :schedule-period "minutes" ; a tick every minute is better for development
       }
       :plugins [
         ;; Check for code smells https://github.com/dakrone/lein-bikeshed
@@ -148,6 +149,7 @@
                  '[oc.lib.db.common :as db-common]
                  '[oc.lib.schema :as lib-schema]
                  '[oc.lib.jwt :as jwt]
+                 '[oc.reminder.config :as config]
                  '[oc.reminder.resources.reminder :as reminder]
                  '[oc.reminder.resources.user :as u]
                  '[oc.reminder.representations.reminder :as reminder-rep])
